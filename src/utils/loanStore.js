@@ -93,7 +93,7 @@ const defaultSettings = {
 export const loanStore = {
   // Initialize storage if missing or clean reset for fresh user
   init() {
-    if (!localStorage.getItem('rc_fresh_account_clean_v6')) {
+    if (!localStorage.getItem('rc_fresh_account_clean_v8')) {
       localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify([]));
       localStorage.setItem(KEYS.LOANS, JSON.stringify([]));
       localStorage.setItem(KEYS.PAYMENTS, JSON.stringify([]));
@@ -101,8 +101,11 @@ export const loanStore = {
       localStorage.setItem(KEYS.COMMUNICATIONS, JSON.stringify([]));
       localStorage.setItem('rc_udhaar_persons', JSON.stringify([]));
       localStorage.setItem('rc_udhaar_transactions', JSON.stringify([]));
-      localStorage.removeItem('daily_expenses_tracker');
-      localStorage.setItem('rc_fresh_account_clean_v6', 'true');
+      localStorage.setItem('rc_bank_accounts', JSON.stringify([]));
+      localStorage.setItem('rc_bank_transactions', JSON.stringify([]));
+      localStorage.setItem('daily_expenses_tracker', JSON.stringify([]));
+      localStorage.removeItem('daily_expenses_budget_limit');
+      localStorage.setItem('rc_fresh_account_clean_v8', 'true');
     }
 
     if (!localStorage.getItem(KEYS.CUSTOMERS)) {

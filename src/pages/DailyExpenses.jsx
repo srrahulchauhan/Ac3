@@ -38,9 +38,9 @@ const getCategoryMeta = (catId) => {
 const DailyExpenses = () => {
   // State
   const [expenses, setExpenses] = useState([]);
-  const [dailyBudget, setDailyBudget] = useState(1000); // Default ₹1,000/day
+  const [dailyBudget, setDailyBudget] = useState(0); // Default ₹0 for fresh users until configured
   const [editingBudget, setEditingBudget] = useState(false);
-  const [tempBudget, setTempBudget] = useState(1000);
+  const [tempBudget, setTempBudget] = useState(0);
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem('rc_view_expenses') || (window.innerWidth >= 768 ? 'table' : 'cards');
   });
@@ -48,7 +48,9 @@ const DailyExpenses = () => {
   const handleSetViewMode = (mode) => {
     setViewMode(mode);
     localStorage.setItem('rc_view_expenses', mode);
-  };  // Form State
+  };
+
+  // Form State
   const [bankAccounts, setBankAccounts] = useState([]);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -88,10 +90,13 @@ const DailyExpenses = () => {
       }
 
       const savedBudget = localStorage.getItem(LOCAL_STORAGE_BUDGET_KEY);
-      if (savedBudget) {
+      if (savedBudget !== null && savedBudget !== undefined) {
         const b = Number(savedBudget);
         setDailyBudget(b);
         setTempBudget(b);
+      } else {
+        setDailyBudget(0);
+        setTempBudget(0);
       }
     } catch (e) {
       console.error("Failed to load daily expenses data", e);
@@ -106,7 +111,7 @@ const DailyExpenses = () => {
 
   // Helper to save budget limit
   const handleSaveBudget = () => {
-    const b = Math.max(1, Number(tempBudget) || 1000);
+    const b = Math.max(0, Number(tempBudget) || 0);
     setDailyBudget(b);
     localStorage.setItem(LOCAL_STORAGE_BUDGET_KEY, b.toString());
     setEditingBudget(false);
@@ -225,9 +230,9 @@ const DailyExpenses = () => {
   const todayStr = getLocalDateString();
   const todayExpenses = useMemo(() => expenses.filter(e => e.date === todayStr), [expenses, todayStr]);
   const todaySpending = useMemo(() => todayExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0), [todayExpenses]);
-  const remainingBudget = dailyBudget - todaySpending;
-  const isBudgetExceeded = remainingBudget < 0;
-  const budgetUsagePct = Math.min(100, Math.round((todaySpending / dailyBudget) * 100));
+  const remainingBudget = dailyBudget > 0 ? (dailyBudget - todaySpending) : 0;
+  const isBudgetExceeded = dailyBudget > 0 && remainingBudget < 0;
+  const budgetUsagePct = dailyBudget > 0 ? Math.min(100, Math.round((todaySpending / dailyBudget) * 100)) : 0;
 
   const thisMonthStr = todayStr.substring(0, 7);
   const monthlyExpenses = useMemo(() => expenses.filter(e => (e.date || '').startsWith(thisMonthStr)), [expenses, thisMonthStr]);
@@ -403,13 +408,18 @@ const DailyExpenses = () => {
           <div 
             className="card modern-card p-3 p-lg-4 h-100 border-0 shadow-sm hover-lift transition-all cursor-pointer"
             style={{ borderTop: '4px solid #0ea5e9', cursor: 'pointer' }}
-            onClick={() => { setEditingBudget(true); setTempBudget(dailyBudget); }}
+            onClick={() => { setEditingBudget(true); setTempBudget(dailyBudget || ''); }}
             title="Click to edit Daily Budget Limit"
           >
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <p className="text-muted small mb-1 fw-semibold">Daily Budget</p>
-                <h3 className="fw-bold mb-0 text-primary">₹{dailyBudget.toLocaleString('en-IN')}</h3>
+                <h3 className="fw-bold mb-0 text-primary">
+                  {dailyBudget > 0 ? `₹${dailyBudget.toLocaleString('en-IN')}` : '₹0'}
+                </h3>
+                <small className="text-muted" style={{ fontSize: '0.72rem' }}>
+                  {dailyBudget > 0 ? 'Click to edit limit' : 'Click to set limit'}
+                </small>
               </div>
               <div className="p-3 rounded-3" style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0ea5e9' }}>
                 <MdAccountBalanceWallet size={24} />
@@ -423,15 +433,18 @@ const DailyExpenses = () => {
           <div 
             className="card modern-card p-3 p-lg-4 h-100 border-0 shadow-sm hover-lift transition-all cursor-pointer"
             style={{ borderTop: `4px solid ${remainingBudget < 0 ? '#ef4444' : '#8b5cf6'}`, cursor: 'pointer' }}
-            onClick={() => { setEditingBudget(true); setTempBudget(dailyBudget); }}
+            onClick={() => { setEditingBudget(true); setTempBudget(dailyBudget || ''); }}
             title="Click to adjust Daily Budget"
           >
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <p className="text-muted small mb-1 fw-semibold">Remaining Balance</p>
                 <h3 className={`fw-bold mb-0 ${remainingBudget < 0 ? 'text-danger' : 'text-purple'}`} style={{ color: remainingBudget < 0 ? '#ef4444' : '#8b5cf6' }}>
-                  ₹{remainingBudget.toLocaleString('en-IN')}
+                  {dailyBudget > 0 ? `₹${remainingBudget.toLocaleString('en-IN')}` : '₹0'}
                 </h3>
+                <small className="text-muted" style={{ fontSize: '0.72rem' }}>
+                  {dailyBudget > 0 ? (isBudgetExceeded ? 'Limit exceeded' : 'Available today') : 'No budget set'}
+                </small>
               </div>
               <div className="p-3 rounded-3" style={{ background: remainingBudget < 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(139, 92, 246, 0.12)', color: remainingBudget < 0 ? '#ef4444' : '#8b5cf6' }}>
                 <MdCheckCircle size={24} />
@@ -464,16 +477,18 @@ const DailyExpenses = () => {
       {/* Budget Progress Bar */}
       <div className="card modern-card p-3 mb-4 border-0 shadow-sm">
         <div className="d-flex justify-content-between align-items-center mb-2">
-          <span className="small fw-bold text-muted text-uppercase" style={{ letterSpacing: '0.5px' }}>Daily Budget Usage ({budgetUsagePct}%)</span>
+          <span className="small fw-bold text-muted text-uppercase" style={{ letterSpacing: '0.5px' }}>
+            Daily Budget Usage ({dailyBudget > 0 ? `${budgetUsagePct}%` : 'Not Configured'})
+          </span>
           <span className={`badge rounded-pill ${isBudgetExceeded ? 'bg-danger' : 'bg-success'}`}>
-            ₹{todaySpending} / ₹{dailyBudget}
+            ₹{todaySpending.toLocaleString('en-IN')} / {dailyBudget > 0 ? `₹${dailyBudget.toLocaleString('en-IN')}` : 'No limit'}
           </span>
         </div>
         <div className="progress" style={{ height: 10, borderRadius: 5 }}>
           <div 
             className={`progress-bar ${isBudgetExceeded ? 'bg-danger' : budgetUsagePct > 80 ? 'bg-warning' : 'bg-success'}`}
             role="progressbar"
-            style={{ width: `${budgetUsagePct}%` }}
+            style={{ width: `${dailyBudget > 0 ? budgetUsagePct : 0}%` }}
           ></div>
         </div>
       </div>
@@ -795,6 +810,68 @@ const DailyExpenses = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set Daily Budget Modal */}
+      {editingBudget && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered modal-sm">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                  <span className="p-1.5 bg-primary bg-opacity-10 text-primary rounded-3">
+                    <MdAccountBalanceWallet size={20} />
+                  </span>
+                  Set Daily Budget
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setEditingBudget(false)}></button>
+              </div>
+
+              <div className="modal-body py-3">
+                <p className="text-muted small mb-3">Set your target spending limit per day to stay on budget and receive alerts.</p>
+                <label className="form-label text-muted fw-semibold small mb-1">Daily Limit (₹)</label>
+                <div className="input-group mb-3">
+                  <span className="input-group-text bg-light text-muted fw-bold">₹</span>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="50"
+                    className="form-control form-control-lg fw-bold" 
+                    placeholder="0"
+                    value={tempBudget}
+                    onChange={e => setTempBudget(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                
+                <div className="d-flex gap-1.5 flex-wrap">
+                  {[0, 500, 1000, 2000, 5000].map(amt => (
+                    <button 
+                      key={amt} 
+                      type="button" 
+                      className={`btn btn-sm flex-fill py-1 rounded-2 fw-semibold ${Number(tempBudget) === amt ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      onClick={() => setTempBudget(amt)}
+                    >
+                      {amt === 0 ? 'No Limit' : `₹${amt}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-footer border-0 pt-0">
+                <button type="button" className="btn btn-light rounded-pill px-3" onClick={() => setEditingBudget(false)}>Cancel</button>
+                <button 
+                  type="button" 
+                  className="btn text-white rounded-pill px-4 fw-bold shadow-sm"
+                  style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #10b981 100%)', border: 'none' }}
+                  onClick={handleSaveBudget}
+                >
+                  Save Limit
+                </button>
+              </div>
             </div>
           </div>
         </div>
