@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MdAdd, MdPersonAdd, MdAccountBalance, MdPayment, MdFileUpload,
-  MdBarChart, MdCalendarToday, MdDownload, MdReceiptLong, MdMoneyOff, MdClose
+  MdBarChart, MdCalendarToday, MdDownload, MdReceiptLong, MdMoneyOff, MdClose,
+  MdAccountBalanceWallet, MdHandshake, MdRestaurant, MdDirectionsCar, MdReceipt,
+  MdLocalHospital, MdShoppingBag, MdMoreHoriz
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
 import { bankStore } from '../utils/bankStore';
@@ -10,6 +12,15 @@ import { getLocalDateString, addMonthsToDate } from '../utils/dateUtils';
 
 const LOAN_TYPES = [
   'Home Loan', 'Car Loan', 'Personal Loan', 'Education Loan', 'Credit Card', 'Other Loan'
+];
+
+const EXPENSE_CATEGORIES = [
+  { id: 'Food', label: 'Food & Dining', icon: <MdRestaurant size={18} />, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
+  { id: 'Travel', label: 'Travel & Fuel', icon: <MdDirectionsCar size={18} />, color: '#0ea5e9', bg: 'rgba(14, 165, 233, 0.12)' },
+  { id: 'Bills', label: 'Bills & Utilities', icon: <MdReceipt size={18} />, color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
+  { id: 'Shopping', label: 'Shopping', icon: <MdShoppingBag size={18} />, color: '#ec4899', bg: 'rgba(236, 72, 153, 0.12)' },
+  { id: 'Health', label: 'Health & Medical', icon: <MdLocalHospital size={18} />, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
+  { id: 'Other', label: 'Other Expenses', icon: <MdMoreHoriz size={18} />, color: '#64748b', bg: 'rgba(100, 116, 139, 0.12)' },
 ];
 
 const FloatingActionButton = () => {
@@ -21,6 +32,16 @@ const FloatingActionButton = () => {
   const [customers, setCustomers] = useState([]);
   const [loans, setLoans] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
+
+  // Expense Form State
+  const [expenseForm, setExpenseForm] = useState({
+    amount: '',
+    category: 'Food',
+    date: getLocalDateString(),
+    bankAccountId: '',
+    paymentMethod: 'UPI',
+    notes: ''
+  });
 
   // Customer Form State
   const [custForm, setCustForm] = useState({
@@ -70,8 +91,12 @@ const FloatingActionButton = () => {
     setCustomers(custs);
     setLoans(lns);
     setBankAccounts(banks);
-    if (!paymentForm.bankAccountId && banks.length > 0) {
-      setPaymentForm(prev => ({ ...prev, bankAccountId: bankStore.getDefaultAccount()?.id || banks[0].id }));
+    const defBankId = bankStore.getDefaultAccount()?.id || (banks[0]?.id || '');
+    if (!paymentForm.bankAccountId && defBankId) {
+      setPaymentForm(prev => ({ ...prev, bankAccountId: defBankId }));
+    }
+    if (!expenseForm.bankAccountId && defBankId) {
+      setExpenseForm(prev => ({ ...prev, bankAccountId: defBankId }));
     }
   };
 
@@ -228,6 +253,57 @@ const FloatingActionButton = () => {
     setIsOpen(false);
   };
 
+  // 4. Save Daily Expense
+  const handleSaveExpense = (e) => {
+    e.preventDefault();
+    const val = Number(expenseForm.amount);
+    if (!val || val <= 0) return;
+
+    const selectedBankId = expenseForm.bankAccountId || bankStore.getDefaultAccount()?.id || (bankAccounts[0]?.id || null);
+    const newExpId = Date.now().toString();
+    const newExp = {
+      id: newExpId,
+      amount: val,
+      category: expenseForm.category || 'Food',
+      date: expenseForm.date || getLocalDateString(),
+      bankAccountId: selectedBankId,
+      paymentMethod: expenseForm.paymentMethod || 'UPI',
+      notes: expenseForm.notes || ''
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('daily_expenses_tracker') || '[]');
+      localStorage.setItem('daily_expenses_tracker', JSON.stringify([newExp, ...existing]));
+      window.dispatchEvent(new Event('expensesUpdated'));
+    } catch (err) {
+      console.error(err);
+    }
+
+    if (selectedBankId) {
+      bankStore.syncModuleTransaction('EXPENSE', newExpId, {
+        bankAccountId: selectedBankId,
+        type: 'Debit',
+        amount: val,
+        date: expenseForm.date || getLocalDateString(),
+        category: `Expense - ${expenseForm.category || 'Other'}`,
+        description: expenseForm.notes || `${expenseForm.category || 'Daily'} Expense`,
+        paymentMethod: expenseForm.paymentMethod || 'UPI',
+        notes: expenseForm.notes || ''
+      });
+    }
+
+    setExpenseForm({
+      amount: '',
+      category: 'Food',
+      date: getLocalDateString(),
+      bankAccountId: '',
+      paymentMethod: 'UPI',
+      notes: ''
+    });
+    setActiveModal(null);
+    setIsOpen(false);
+  };
+
   return (
     <>
       {/* Floating Circular Black '+' Button */}
@@ -335,12 +411,14 @@ const FloatingActionButton = () => {
             <div style={{
               background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)',
               borderRadius: '24px',
-              padding: '28px 24px 24px',
+              padding: '24px 20px 20px',
               boxShadow: '0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07)',
               color: '#fff',
+              maxHeight: '90vh',
+              overflowY: 'auto'
             }}>
               {/* Header */}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'18px' }}>
                 <div>
                   <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'rgba(255,255,255,0.45)', marginBottom:'2px' }}>RC Accountant</div>
                   <div style={{ fontSize:'1.15rem', fontWeight:800, color:'#fff' }}>Quick Actions</div>
@@ -355,17 +433,21 @@ const FloatingActionButton = () => {
               </div>
 
               {/* Grid */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'10px' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(135px, 1fr))', gap:'10px' }}>
 
                 {[
-                  { label:'Add Customer',   sub:'New borrower profile',   icon:<MdPersonAdd size={22}/>,   color:'#6366f1', bg:'rgba(99,102,241,0.18)',  action:() => { setIsOpen(false); setActiveModal('customer'); } },
-                  { label:'Add Loan',       sub:'Setup EMI loan account',  icon:<MdAccountBalance size={22}/>, color:'#10b981', bg:'rgba(16,185,129,0.18)', action:() => { setIsOpen(false); setActiveModal('loan'); } },
-                  { label:'Record Payment', sub:'Mark EMI as paid',        icon:<MdPayment size={22}/>,    color:'#f59e0b', bg:'rgba(245,158,11,0.18)',  action:() => { setIsOpen(false); setActiveModal('payment'); } },
-                  { label:'EMI Payments',   sub:'View payment ledger',     icon:<MdReceiptLong size={22}/>, color:'#3b82f6', bg:'rgba(59,130,246,0.18)', action:() => { setIsOpen(false); navigate('/emi-payments'); } },
-                  { label:'Reports',        sub:'Analytics & insights',    icon:<MdBarChart size={22}/>,   color:'#8b5cf6', bg:'rgba(139,92,246,0.18)',  action:() => { setIsOpen(false); navigate('/reports'); } },
-                  { label:'Calendar',       sub:'EMI due schedule',        icon:<MdCalendarToday size={22}/>, color:'#ec4899', bg:'rgba(236,72,153,0.18)', action:() => { setIsOpen(false); navigate('/calendar'); } },
-                  { label:'Statements',     sub:'Account PDF reports',     icon:<MdFileUpload size={22}/>, color:'#14b8a6', bg:'rgba(20,184,166,0.18)',  action:() => { setIsOpen(false); navigate('/statements'); } },
-                  { label:'Export Backup',  sub:'Download JSON data',      icon:<MdDownload size={22}/>,   color:'#f97316', bg:'rgba(249,115,22,0.18)',  action:() => { setIsOpen(false); loanStore.exportBackup(); } },
+                  { label:'Add Expense',    sub:'Record daily spending',   icon:<MdAccountBalanceWallet size={22}/>, color:'#0ea5e9', bg:'rgba(14,165,233,0.18)', action:() => { setIsOpen(false); setActiveModal('expense'); } },
+                  { label:'Add Customer',   sub:'New borrower profile',    icon:<MdPersonAdd size={22}/>,            color:'#6366f1', bg:'rgba(99,102,241,0.18)', action:() => { setIsOpen(false); setActiveModal('customer'); } },
+                  { label:'Add Loan',       sub:'Setup EMI loan account',   icon:<MdAccountBalance size={22}/>,      color:'#10b981', bg:'rgba(16,185,129,0.18)', action:() => { setIsOpen(false); setActiveModal('loan'); } },
+                  { label:'Record Payment', sub:'Mark EMI as paid',         icon:<MdPayment size={22}/>,             color:'#f59e0b', bg:'rgba(245,158,11,0.18)', action:() => { setIsOpen(false); setActiveModal('payment'); } },
+                  { label:'Bank Accounts',  sub:'Passbook & ATM cards',    icon:<MdAccountBalance size={22}/>,      color:'#06b6d4', bg:'rgba(6,182,212,0.18)',  action:() => { setIsOpen(false); navigate('/bank-accounts'); } },
+                  { label:'Daily Expenses', sub:'Overview & Budget',       icon:<MdReceipt size={22}/>,              color:'#38bdf8', bg:'rgba(56,189,248,0.18)',  action:() => { setIsOpen(false); navigate('/daily-expenses'); } },
+                  { label:'Udhaar Khata',   sub:'Given / Taken ledger',    icon:<MdHandshake size={22}/>,           color:'#f43f5e', bg:'rgba(244,63,94,0.18)',  action:() => { setIsOpen(false); navigate('/udhaar'); } },
+                  { label:'EMI Payments',   sub:'View payment ledger',      icon:<MdReceiptLong size={22}/>,         color:'#3b82f6', bg:'rgba(59,130,246,0.18)', action:() => { setIsOpen(false); navigate('/emi-payments'); } },
+                  { label:'Reports',        sub:'Analytics & insights',     icon:<MdBarChart size={22}/>,            color:'#8b5cf6', bg:'rgba(139,92,246,0.18)', action:() => { setIsOpen(false); navigate('/reports'); } },
+                  { label:'Calendar',       sub:'EMI due schedule',         icon:<MdCalendarToday size={22}/>,       color:'#ec4899', bg:'rgba(236,72,153,0.18)', action:() => { setIsOpen(false); navigate('/calendar'); } },
+                  { label:'Statements',     sub:'Account PDF reports',      icon:<MdFileUpload size={22}/>,          color:'#14b8a6', bg:'rgba(20,184,166,0.18)', action:() => { setIsOpen(false); navigate('/statements'); } },
+                  { label:'Export Backup',  sub:'Download JSON data',       icon:<MdDownload size={22}/>,            color:'#f97316', bg:'rgba(249,115,22,0.18)', action:() => { setIsOpen(false); loanStore.exportBackup(); } },
                 ].map((item, i) => (
                   <button
                     key={i}
@@ -375,20 +457,20 @@ const FloatingActionButton = () => {
                       background: item.bg,
                       border: `1px solid ${item.color}33`,
                       borderRadius: '16px',
-                      padding: '16px 14px',
+                      padding: '14px 12px',
                       cursor: 'pointer',
                       textAlign: 'left',
                       transition: 'transform 0.15s ease, background 0.15s ease',
-                      animationDelay: `${i * 0.04}s`,
+                      animationDelay: `${i * 0.03}s`,
                     }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                   >
-                    <div style={{ width:'40px', height:'40px', borderRadius:'12px', background:`${item.color}28`, display:'flex', alignItems:'center', justifyContent:'center', color:item.color, marginBottom:'10px' }}>
+                    <div style={{ width:'38px', height:'38px', borderRadius:'12px', background:`${item.color}28`, display:'flex', alignItems:'center', justifyContent:'center', color:item.color, marginBottom:'8px' }}>
                       {item.icon}
                     </div>
                     <div style={{ fontWeight:700, fontSize:'0.82rem', color:'#f1f5f9', marginBottom:'2px', lineHeight:1.2 }}>{item.label}</div>
-                    <div style={{ fontSize:'0.67rem', color:'rgba(255,255,255,0.45)', lineHeight:1.3 }}>{item.sub}</div>
+                    <div style={{ fontSize:'0.66rem', color:'rgba(255,255,255,0.45)', lineHeight:1.2 }}>{item.sub}</div>
                   </button>
                 ))}
 
@@ -752,6 +834,143 @@ const FloatingActionButton = () => {
                   <button type="button" className="btn btn-light border rounded-3 px-4 fw-semibold" onClick={() => setActiveModal(null)}>Cancel</button>
                   <button type="submit" className="btn btn-warning rounded-3 px-4 fw-bold shadow-sm text-dark">
                     ✓ Confirm EMI Payment
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. Add Daily Expense Modal ── */}
+      {activeModal === 'expense' && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', zIndex: 1060 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-header border-0 bg-light py-3 px-4">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="p-2 rounded-3 text-white" style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #10b981 100%)' }}>
+                    <MdAccountBalanceWallet size={20} />
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark mb-0">Add Daily Expense</h5>
+                    <small className="text-muted">Record daily personal or business expenditure</small>
+                  </div>
+                </div>
+                <button type="button" className="btn-close" onClick={() => setActiveModal(null)}></button>
+              </div>
+
+              <form onSubmit={handleSaveExpense}>
+                <div className="modal-body p-4">
+                  {/* Expense Amount */}
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Expense Amount (₹) *</label>
+                    <div className="input-group">
+                      <span className="input-group-text bg-light fw-bold text-muted">₹</span>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="form-control form-control-lg fw-bold text-primary" 
+                        placeholder="0.00" 
+                        value={expenseForm.amount} 
+                        onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                        required 
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category Selection */}
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Category *</label>
+                    <div className="row g-2">
+                      {EXPENSE_CATEGORIES.map(cat => (
+                        <div className="col-4" key={cat.id}>
+                          <div 
+                            className={`p-2 rounded-3 border text-center cursor-pointer transition-all ${expenseForm.category === cat.id ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'bg-light'}`}
+                            onClick={() => setExpenseForm({ ...expenseForm, category: cat.id })}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div style={{ color: cat.color }}>{cat.icon}</div>
+                            <span className="small fw-semibold d-block mt-1 text-truncate">{cat.id}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Paid From Bank Account */}
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted d-flex align-items-center gap-1">
+                      <MdAccountBalance size={16} className="text-primary" /> Paid From Bank Account
+                    </label>
+                    <select
+                      className="form-select fw-semibold"
+                      value={expenseForm.bankAccountId}
+                      onChange={e => setExpenseForm({ ...expenseForm, bankAccountId: e.target.value })}
+                    >
+                      <option value="">-- Select Bank Account --</option>
+                      {bankAccounts.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.bankName} ({b.accountNumber ? `..${b.accountNumber.slice(-4)}` : b.accountType}) - Bal: ₹{Number(b.currentBalance).toLocaleString('en-IN')}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="text-muted" style={{ fontSize: '0.68rem' }}>
+                      Automatically decreases the selected bank balance
+                    </small>
+                  </div>
+
+                  {/* Date & Payment Method */}
+                  <div className="row g-2 mb-3">
+                    <div className="col-6">
+                      <label className="form-label small fw-semibold text-muted">Date</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        value={expenseForm.date} 
+                        onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                        required 
+                      />
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label small fw-semibold text-muted">Payment Method</label>
+                      <select 
+                        className="form-select"
+                        value={expenseForm.paymentMethod}
+                        onChange={e => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })}
+                      >
+                        <option value="UPI">UPI / PhonePe / GPay</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Net Banking">Net Banking</option>
+                        <option value="Debit Card">Debit Card</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="mb-1">
+                    <label className="form-label small fw-semibold text-muted">Notes / Description (Optional)</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="e.g. Lunch thali, Uber to office, Groceries..." 
+                      value={expenseForm.notes} 
+                      onChange={e => setExpenseForm({ ...expenseForm, notes: e.target.value })} 
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-footer border-0 bg-light py-3 px-4">
+                  <button type="button" className="btn btn-light border rounded-3 px-4 fw-semibold" onClick={() => setActiveModal(null)}>Cancel</button>
+                  <button 
+                    type="submit" 
+                    className="btn text-white rounded-3 px-4 fw-bold shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #10b981 100%)', border: 'none' }}
+                  >
+                    ✓ Save Expense
                   </button>
                 </div>
               </form>
