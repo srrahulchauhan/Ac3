@@ -7,6 +7,7 @@ import {
   MdViewList, MdViewModule
 } from 'react-icons/md';
 import { udhaarStore } from '../utils/udhaarStore';
+import { bankStore } from '../utils/bankStore';
 import { formatIndianDate, getLocalDateString } from '../utils/dateUtils';
 import AnimatedNumber from '../components/AnimatedNumber';
 
@@ -34,17 +35,19 @@ const UdhaarAccount = () => {
   const [personForm, setPersonForm] = useState({ name: '', phone: '', notes: '' });
 
   const [showTxModal, setShowTxModal] = useState(false);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [selectedLedgerPerson, setSelectedLedgerPerson] = useState(null);
+  const [ledgerTransactions, setLedgerTransactions] = useState([]);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { type: 'person' | 'tx', id: '' }
+
   const [txForm, setTxForm] = useState({
     personId: '',
     type: 'Debit', // 'Debit' (You Gave) or 'Credit' (You Got)
     amount: '',
+    bankAccountId: '',
     date: getLocalDateString(),
     note: ''
   });
-
-  const [selectedLedgerPerson, setSelectedLedgerPerson] = useState(null);
-  const [ledgerTransactions, setLedgerTransactions] = useState([]);
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // { type: 'person' | 'tx', id: '' }
 
   const loadData = () => {
     const list = udhaarStore.getPersons();
@@ -107,10 +110,12 @@ const UdhaarAccount = () => {
 
   // Open Add Transaction Modal
   const openTxModal = (personId = '', defaultType = 'Debit') => {
+    const defBankId = bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || '';
     setTxForm({
       personId: personId || (persons[0]?.id || ''),
       type: defaultType,
       amount: '',
+      bankAccountId: defBankId,
       date: getLocalDateString(),
       note: ''
     });
@@ -125,6 +130,7 @@ const UdhaarAccount = () => {
       personId: txForm.personId,
       type: txForm.type,
       amount: Number(txForm.amount),
+      bankAccountId: txForm.bankAccountId || null,
       date: txForm.date || getLocalDateString(),
       note: txForm.note.trim()
     });
@@ -183,7 +189,7 @@ const UdhaarAccount = () => {
         <div>
           <div className="d-flex align-items-center gap-2 mb-1">
             <h3 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-              <MdCompareArrows className="text-primary" size={28} /> Friend / Udhaar Account
+              <MdCompareArrows className="text-primary" size={28} /> Udhaar Account
             </h3>
             <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill small fw-semibold">
               Khatabook
@@ -228,7 +234,7 @@ const UdhaarAccount = () => {
               ₹<AnimatedNumber value={summary.totalGiven} />
             </h3>
             <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-              Total Debited across all friends
+              Total Debited across all accounts
             </small>
           </div>
         </div>
@@ -366,7 +372,7 @@ const UdhaarAccount = () => {
           <p className="text-muted small mb-4">
             {searchQuery || statusFilter !== 'All' 
               ? 'Try adjusting your search query or status filter.' 
-              : 'Add your first friend or contact to track personal lending and udhaar hisab-kitab.'}
+              : 'Add your first contact/person to track personal lending and udhaar hisab-kitab.'}
           </p>
           <div>
             <button className="btn btn-primary rounded-3 px-4 fw-bold shadow-sm" onClick={() => openPersonModal()}>
@@ -628,7 +634,7 @@ const UdhaarAccount = () => {
               <form onSubmit={handleSavePerson}>
                 <div className="modal-body p-4">
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold text-muted">Person / Friend Name *</label>
+                    <label className="form-label small fw-semibold text-muted">Person Name *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -659,7 +665,7 @@ const UdhaarAccount = () => {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="e.g. College Friend, Neighbor"
+                      placeholder="e.g. Neighbor, Client, Colleague"
                       value={personForm.notes}
                       onChange={(e) => setPersonForm({ ...personForm, notes: e.target.value })}
                     />
@@ -775,6 +781,28 @@ const UdhaarAccount = () => {
                         required
                       />
                     </div>
+                  </div>
+
+                  {/* Bank Account */}
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">
+                      {txForm.type === 'Debit' ? 'Given From Bank Account' : 'Received Into Bank Account'}
+                    </label>
+                    <select
+                      className="form-select fw-semibold"
+                      value={txForm.bankAccountId}
+                      onChange={(e) => setTxForm({ ...txForm, bankAccountId: e.target.value })}
+                    >
+                      <option value="">-- None / Direct Cash --</option>
+                      {bankAccounts.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.bankName} ({b.accountNumber ? `..${b.accountNumber.slice(-4)}` : b.accountType}) - Bal: ₹{Number(b.currentBalance).toLocaleString('en-IN')}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="text-muted d-block mt-1" style={{ fontSize: '0.68rem' }}>
+                      {txForm.type === 'Debit' ? 'Decreases bank balance' : 'Increases bank balance'}
+                    </small>
                   </div>
 
                   {/* Note / Remarks */}

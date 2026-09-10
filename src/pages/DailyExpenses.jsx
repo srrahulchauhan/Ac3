@@ -4,7 +4,7 @@ import {
   MdWarning, MdAdd, MdSearch, MdFilterList, MdTrendingDown, 
   MdAccountBalanceWallet, MdCheckCircle, MdSettings, MdShoppingBag, 
   MdRestaurant, MdDirectionsCar, MdReceipt, MdLocalHospital, MdMoreHoriz,
-  MdClose, MdSave, MdRefresh, MdViewList, MdViewModule
+  MdClose, MdSave, MdRefresh, MdViewList, MdViewModule, MdAccountBalance
 } from 'react-icons/md';
 import { 
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, 
@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import { getLocalDateString, formatIndianDate } from '../utils/dateUtils';
+import { bankStore } from '../utils/bankStore';
 
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement, 
@@ -47,15 +48,15 @@ const DailyExpenses = () => {
   const handleSetViewMode = (mode) => {
     setViewMode(mode);
     localStorage.setItem('rc_view_expenses', mode);
-  };
-
-  // Form State
+  };  // Form State
+  const [bankAccounts, setBankAccounts] = useState([]);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     amount: '',
     category: 'Food',
     date: getLocalDateString(),
+    bankAccountId: '',
     paymentMethod: 'UPI',
     notes: ''
   });
@@ -65,7 +66,17 @@ const DailyExpenses = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('Today'); // 'Today', 'This Week', 'This Month', 'All'
 
-  // Load from Local Storage
+  // Load from Local Storage & bank accounts
+  const loadBankAccounts = () => {
+    setBankAccounts(bankStore.getAccounts());
+  };
+
+  useEffect(() => {
+    loadBankAccounts();
+    window.addEventListener('bankStoreUpdated', loadBankAccounts);
+    return () => window.removeEventListener('bankStoreUpdated', loadBankAccounts);
+  }, []);
+
   useEffect(() => {
     try {
       const savedExpenses = localStorage.getItem(LOCAL_STORAGE_EXPENSES_KEY);
@@ -103,11 +114,13 @@ const DailyExpenses = () => {
 
   // Open modal for new expense
   const handleOpenAddModal = (cat = 'Food') => {
+    const defBank = bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || '';
     setEditingId(null);
     setFormData({
       amount: '',
       category: cat,
       date: getLocalDateString(),
+      bankAccountId: defBank,
       paymentMethod: 'UPI',
       notes: ''
     });
@@ -116,11 +129,13 @@ const DailyExpenses = () => {
 
   // Open modal for editing
   const handleEditClick = (expense) => {
+    const defBank = expense.bankAccountId || bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || '';
     setEditingId(expense.id);
     setFormData({
       amount: expense.amount.toString(),
       category: expense.category,
       date: expense.date,
+      bankAccountId: defBank,
       paymentMethod: expense.paymentMethod || 'UPI',
       notes: expense.notes || ''
     });
@@ -132,6 +147,7 @@ const DailyExpenses = () => {
     if (window.confirm("Are you sure you want to delete this expense record?")) {
       const updated = expenses.filter(e => e.id !== id);
       saveExpensesToStorage(updated);
+      bankStore.deleteModuleTransactions('EXPENSE', id);
     }
   };
 
@@ -144,6 +160,8 @@ const DailyExpenses = () => {
       return;
     }
 
+    const selectedBankId = formData.bankAccountId || bankStore.getDefaultAccount()?.id || null;
+
     if (editingId) {
       const updated = expenses.map(item => {
         if (item.id === editingId) {
@@ -151,24 +169,53 @@ const DailyExpenses = () => {
             ...item, 
             amount: val, 
             category: formData.category, 
-            date: formData.date, 
-            paymentMethod: formData.paymentMethod,
+            date: formData.date,
+            bankAccountId: selectedBankId,
+            paymentMethod: formData.paymentMethod, 
             notes: formData.notes 
           };
         }
         return item;
       });
       saveExpensesToStorage(updated);
+
+      if (selectedBankId) {
+        bankStore.syncModuleTransaction('EXPENSE', editingId, {
+          bankAccountId: selectedBankId,
+          type: 'Debit',
+          amount: val,
+          date: formData.date,
+          category: `Expense - ${formData.category}`,
+          description: formData.notes || `${formData.category} Expense`,
+          paymentMethod: formData.paymentMethod,
+          notes: formData.notes
+        });
+      }
     } else {
+      const newExpId = Date.now().toString();
       const newExp = {
-        id: Date.now().toString(),
+        id: newExpId,
         amount: val,
         category: formData.category,
         date: formData.date,
+        bankAccountId: selectedBankId,
         paymentMethod: formData.paymentMethod,
         notes: formData.notes
       };
       saveExpensesToStorage([newExp, ...expenses]);
+
+      if (selectedBankId) {
+        bankStore.syncModuleTransaction('EXPENSE', newExpId, {
+          bankAccountId: selectedBankId,
+          type: 'Debit',
+          amount: val,
+          date: formData.date,
+          category: `Expense - ${formData.category}`,
+          description: formData.notes || `${formData.category} Expense`,
+          paymentMethod: formData.paymentMethod,
+          notes: formData.notes
+        });
+      }
     }
 
     setShowFormModal(false);
@@ -670,6 +717,28 @@ const DailyExpenses = () => {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Paid From Bank Account */}
+                  <div className="mb-3">
+                    <label className="form-label text-muted fw-semibold small mb-1 d-flex align-items-center gap-1">
+                      <MdAccountBalance size={16} className="text-primary" /> Paid From Bank Account
+                    </label>
+                    <select
+                      className="form-select"
+                      value={formData.bankAccountId}
+                      onChange={e => setFormData({ ...formData, bankAccountId: e.target.value })}
+                    >
+                      <option value="">-- Select Bank Account --</option>
+                      {bankAccounts.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.bankName} ({b.accountNumber ? `..${b.accountNumber.slice(-4)}` : b.accountType}) - Bal: ₹{Number(b.currentBalance).toLocaleString('en-IN')}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="text-muted" style={{ fontSize: '0.68rem' }}>
+                      Automatically decreases the selected bank balance
+                    </small>
                   </div>
 
                   {/* Date & Payment Method */}

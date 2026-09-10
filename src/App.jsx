@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './layout/Layout';
 import Dashboard from './pages/Dashboard';
-
+import BankAccounts from './pages/BankAccounts';
 import DailyExpenses from './pages/DailyExpenses';
 import Customers from './pages/Customers';
 import Loans from './pages/Loans';
@@ -28,7 +28,7 @@ function App() {
       {/* Protected Main Application Routes */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
-
+        <Route path="bank-accounts" element={<BankAccounts />} />
         <Route path="daily-expenses" element={<DailyExpenses />} />
         <Route path="udhaar" element={<UdhaarAccount />} />
         <Route path="customers" element={<Customers />} />

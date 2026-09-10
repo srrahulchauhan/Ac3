@@ -5,6 +5,7 @@ import {
   MdSend, MdViewList, MdViewModule, MdHourglassEmpty
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
+import { bankStore } from '../utils/bankStore';
 import { getLocalDateString, addMonthsToDate, formatIndianDate } from '../utils/dateUtils';
 import SendStatementModal from '../components/SendStatementModal';
 
@@ -47,6 +48,8 @@ const Loans = () => {
     tenureMonths: 12,
     dueDate: addMonthsToDate(getLocalDateString(), 1),
     status: 'Active',
+    bankAccountId: '',
+    disburseViaBank: true,
     notes: '',
   });
 
@@ -54,12 +57,17 @@ const Loans = () => {
     setLoans(loanStore.getLoans());
     setCustomers(loanStore.getCustomers());
     setPayments(loanStore.getPayments());
+    setBankAccounts(bankStore.getAccounts());
   };
 
   useEffect(() => {
     loadData();
     window.addEventListener('loanStoreUpdated', loadData);
-    return () => window.removeEventListener('loanStoreUpdated', loadData);
+    window.addEventListener('bankStoreUpdated', loadData);
+    return () => {
+      window.removeEventListener('loanStoreUpdated', loadData);
+      window.removeEventListener('bankStoreUpdated', loadData);
+    };
   }, []);
 
   const handleQuickStatusChange = (loanId, newStatus) => {
@@ -640,6 +648,28 @@ const Loans = () => {
                       <small className="text-muted d-block mt-1" style={{ fontSize: '0.68rem' }}>Click "+1 Mo" to auto-continue next month's EMI date</small>
                     </div>
 
+
+                    <div className="col-12">
+                      <label className="form-label small fw-semibold text-muted d-flex align-items-center gap-1">
+                        <MdAccountBalance size={16} className="text-primary" /> Disbursement Bank Account (Optional)
+                      </label>
+                      <select
+                        className="form-select"
+                        name="bankAccountId"
+                        value={formData.bankAccountId || ''}
+                        onChange={handleFormChange}
+                      >
+                        <option value="">-- Do Not Disburse via Bank Account --</option>
+                        {bankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.bankName} ({b.accountNumber ? `..${b.accountNumber.slice(-4)}` : b.accountType}) - Bal: ₹{Number(b.currentBalance).toLocaleString('en-IN')}
+                          </option>
+                        ))}
+                      </select>
+                      <small className="text-muted d-block mt-1" style={{ fontSize: '0.68rem' }}>
+                        Selecting a bank account will automatically log a debit disbursement in that bank ledger
+                      </small>
+                    </div>
 
                     <div className="col-12">
                       <label className="form-label small fw-semibold text-muted">Loan Notes & Terms</label>

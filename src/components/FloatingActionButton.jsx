@@ -5,6 +5,7 @@ import {
   MdBarChart, MdCalendarToday, MdDownload, MdReceiptLong, MdMoneyOff, MdClose
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
+import { bankStore } from '../utils/bankStore';
 import { getLocalDateString, addMonthsToDate } from '../utils/dateUtils';
 
 const LOAN_TYPES = [
@@ -19,6 +20,7 @@ const FloatingActionButton = () => {
   // Data lists for dropdowns
   const [customers, setCustomers] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
 
   // Customer Form State
   const [custForm, setCustForm] = useState({
@@ -44,6 +46,7 @@ const FloatingActionButton = () => {
     startDate: getLocalDateString(),
     tenureMonths: 12,
     dueDate: addMonthsToDate(getLocalDateString(), 1),
+    bankAccountId: '',
     notes: ''
   });
 
@@ -51,6 +54,7 @@ const FloatingActionButton = () => {
   const [paymentForm, setPaymentForm] = useState({
     loanId: '',
     amount: '',
+    bankAccountId: '',
     paymentType: 'Regular',
     advanceMonths: 1,
     paidDate: getLocalDateString(),
@@ -58,12 +62,17 @@ const FloatingActionButton = () => {
     notes: ''
   });
 
-  // Sync selectors data from loanStore
+  // Sync selectors data from loanStore and bankStore
   const loadSelectorData = () => {
     const custs = loanStore.getCustomers();
     const lns = loanStore.getLoans();
+    const banks = bankStore.getAccounts();
     setCustomers(custs);
     setLoans(lns);
+    setBankAccounts(banks);
+    if (!paymentForm.bankAccountId && banks.length > 0) {
+      setPaymentForm(prev => ({ ...prev, bankAccountId: bankStore.getDefaultAccount()?.id || banks[0].id }));
+    }
   };
 
   useEffect(() => {
@@ -175,27 +184,44 @@ const FloatingActionButton = () => {
 
     // Find if there is an upcoming payment record or create new
     const existingPayments = loanStore.getPayments().filter(p => p.loanId === selectedLoan.id && p.status !== 'Paid');
+    const targetBankId = paymentForm.bankAccountId || bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || null;
+
     if (existingPayments.length > 0) {
       loanStore.markPaymentAsPaid(existingPayments[0].id, {
         paidDate: paymentForm.paidDate,
         amount: finalAmount,
+        bankAccountId: targetBankId,
         paymentMethod: isAdvance ? 'Advance Payment' : paymentForm.paymentMethod,
         nextDueDate: nextDueDate,
         notes: paymentForm.notes || (isAdvance ? `Advance EMI payment for ${advMonths} month(s)` : 'Direct EMI Payment')
       });
     } else {
+      const newPayId = 'PAY-' + Math.floor(1000 + Math.random() * 9000);
       loanStore.addPaymentRecord({
+        id: newPayId,
         loanId: selectedLoan.id,
         customerId: selectedLoan.customerId,
         customerName: selectedLoan.customerName,
         loanName: selectedLoan.loanName,
         amount: finalAmount,
+        bankAccountId: targetBankId,
         paidDate: paymentForm.paidDate,
         dueDate: selectedLoan.dueDate,
         paymentMethod: isAdvance ? 'Advance Payment' : paymentForm.paymentMethod,
         notes: paymentForm.notes || (isAdvance ? `Advance EMI payment for ${advMonths} month(s)` : 'Direct EMI Payment'),
         status: 'Paid'
       });
+      if (targetBankId) {
+        bankStore.syncModuleTransaction('EMI_PAYMENT', newPayId, {
+          bankAccountId: targetBankId,
+          type: 'Credit',
+          amount: finalAmount,
+          date: paymentForm.paidDate,
+          category: 'EMI Collection',
+          description: `EMI Collection: ${selectedLoan.customerName} (${selectedLoan.loanName})`,
+          paymentMethod: paymentForm.paymentMethod
+        });
+      }
     }
 
     setActiveModal(null);
@@ -673,9 +699,27 @@ const FloatingActionButton = () => {
                   )}
 
                   <div className="row g-3 mb-3">
-                    <div className="col-12">
+                    <div className="col-12 col-md-6">
                       <label className="form-label small fw-semibold text-muted">EMI Amount Paid (₹) *</label>
                       <input type="number" className="form-control fw-bold text-success" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} required />
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <label className="form-label small fw-semibold text-muted d-flex align-items-center gap-1">
+                        <MdAccountBalance size={16} className="text-primary" /> Receiving Bank Account
+                      </label>
+                      <select
+                        className="form-select fw-semibold"
+                        value={paymentForm.bankAccountId}
+                        onChange={e => setPaymentForm({ ...paymentForm, bankAccountId: e.target.value })}
+                      >
+                        <option value="">-- Default Bank Account --</option>
+                        {bankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.bankName} ({b.accountNumber ? `..${b.accountNumber.slice(-4)}` : b.accountType}) - Bal: ₹{Number(b.currentBalance).toLocaleString('en-IN')}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

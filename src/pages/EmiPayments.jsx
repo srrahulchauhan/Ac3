@@ -7,6 +7,7 @@ import {
   MdPhone, MdAccountBalance, MdCheck
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
+import { bankStore } from '../utils/bankStore';
 import { getLocalDateString, formatIndianDate, addMonthsToDate } from '../utils/dateUtils';
 
 const fmtAmt = (a) => a != null ? '₹' + Number(a).toLocaleString('en-IN') : '₹0';
@@ -59,11 +60,25 @@ const EmiPayments = () => {
     };
   }, []);
 
+  const [bankAccounts, setBankAccounts] = useState([]);
+
+  const loadBankAccounts = () => {
+    setBankAccounts(bankStore.getAccounts());
+  };
+
+  useEffect(() => {
+    loadBankAccounts();
+    window.addEventListener('bankStoreUpdated', loadBankAccounts);
+    return () => window.removeEventListener('bankStoreUpdated', loadBankAccounts);
+  }, []);
+
   const openMarkPaidModal = (pay) => {
+    const defaultBankId = pay.bankAccountId || bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || '';
     setMarkingPayment(pay);
     setPaidDetails({
       paidDate: getLocalDateString(),
       paymentMethod: pay.paymentMethod || 'UPI',
+      bankAccountId: defaultBankId,
       paymentType: 'Regular',
       amount: pay.amount,
       advanceMonths: 1,
@@ -677,18 +692,25 @@ const EmiPayments = () => {
                   )}
 
                   <div className="row g-3 mb-3">
-                    <div className="col-6">
-                      <label className="form-label small fw-semibold text-muted">Payment Date *</label>
-                      <input
-                        type="date"
-                        className="form-control fw-bold"
-                        value={paidDetails.paidDate}
-                        onChange={(e) => setPaidDetails({ ...paidDetails, paidDate: e.target.value })}
-                        required
-                      />
+                    <div className="col-12 col-md-6">
+                      <label className="form-label small fw-semibold text-muted d-flex align-items-center gap-1">
+                        <MdAccountBalance size={16} className="text-primary" /> Receiving Bank Account *
+                      </label>
+                      <select
+                        className="form-select fw-semibold"
+                        value={paidDetails.bankAccountId || ''}
+                        onChange={(e) => setPaidDetails({ ...paidDetails, bankAccountId: e.target.value })}
+                      >
+                        <option value="">-- Select Bank Account --</option>
+                        {bankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>
+                            {b.bankName} ({b.accountNumber ? `..${b.accountNumber.slice(-4)}` : b.accountType})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="col-6">
+                    <div className="col-12 col-md-6">
                       <label className="form-label small fw-semibold text-muted">Payment Method *</label>
                       <select
                         className="form-select fw-semibold"
@@ -702,6 +724,17 @@ const EmiPayments = () => {
                         <option value="Card">Debit / Credit Card</option>
                         <option value="Cheque">Cheque</option>
                       </select>
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label small fw-semibold text-muted">Payment Date *</label>
+                      <input
+                        type="date"
+                        className="form-control fw-bold"
+                        value={paidDetails.paidDate}
+                        onChange={(e) => setPaidDetails({ ...paidDetails, paidDate: e.target.value })}
+                        required
+                      />
                     </div>
                   </div>
 

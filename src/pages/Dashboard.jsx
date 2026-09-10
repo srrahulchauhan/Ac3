@@ -6,6 +6,7 @@ import {
   MdCheckCircle, MdSend, MdAddCircle, MdCalendarToday, MdReceiptLong, MdBarChart, MdArrowForward
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
+import { bankStore } from '../utils/bankStore';
 import { getLocalDateString, formatIndianDate } from '../utils/dateUtils';
 import AnimatedNumber from '../components/AnimatedNumber';
 
@@ -16,6 +17,8 @@ const Dashboard = () => {
   const [loans, setLoans] = useState([]);
   const [payments, setPayments] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [bankSummary, setBankSummary] = useState({ totalBalance: 0, activeAccountsCount: 0 });
   const [loading, setLoading] = useState(true);
 
   const loadData = () => {
@@ -23,14 +26,18 @@ const Dashboard = () => {
     setLoans(loanStore.getLoans());
     setPayments(loanStore.getPayments());
     setReminders(loanStore.getReminders());
+    setBankAccounts(bankStore.getAccounts());
+    setBankSummary(bankStore.getFinancialSummary());
     setLoading(false);
   };
 
   useEffect(() => {
     loadData();
     window.addEventListener('loanStoreUpdated', loadData);
+    window.addEventListener('bankStoreUpdated', loadData);
     return () => {
       window.removeEventListener('loanStoreUpdated', loadData);
+      window.removeEventListener('bankStoreUpdated', loadData);
     };
   }, []);
 
@@ -153,6 +160,53 @@ const Dashboard = () => {
           <button className="btn btn-primary btn-sm rounded-3 d-flex align-items-center gap-1.5 px-3 py-2 fw-bold shadow-sm hover-lift" onClick={() => navigate('/calendar')}>
             <MdCalendarToday size={18} /> Calendar
           </button>
+        </div>
+      </div>
+
+      {/* Central Bank Liquidity Banner */}
+      <div className="card border-0 shadow-sm rounded-4 p-3.5 mb-4 bg-white border-start border-4 border-primary">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+          <div className="d-flex align-items-center gap-3">
+            <div className="rounded-3 p-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
+              <MdAccountBalance size={26} />
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2">
+                <span className="text-muted fw-semibold small text-uppercase" style={{ fontSize: '0.72rem', letterSpacing: '0.5px' }}>
+                  Total Bank & Cash Liquidity
+                </span>
+                <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill small fw-bold">
+                  Central Engine
+                </span>
+              </div>
+              <h3 className={`fw-bold mb-0 ${bankSummary.totalBalance >= 0 ? 'text-dark' : 'text-danger'}`}>
+                ₹<AnimatedNumber value={bankSummary.totalBalance} />
+              </h3>
+            </div>
+          </div>
+
+          {/* Bank Accounts Mini Badges & Action */}
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {bankAccounts.slice(0, 3).map(b => (
+              <div 
+                key={b.id} 
+                className="badge bg-light text-dark border px-2.5 py-1.5 rounded-3 d-flex align-items-center gap-1.5 cursor-pointer hover-lift"
+                onClick={() => navigate('/bank-accounts')}
+                style={{ cursor: 'pointer' }}
+                title="View in Bank Accounts"
+              >
+                <span className="rounded-circle d-inline-block" style={{ width: '8px', height: '8px', backgroundColor: b.color || '#0d6efd' }}></span>
+                <span className="fw-bold">{b.bankName}</span>
+                <span className="text-muted font-monospace">₹{Number(b.currentBalance).toLocaleString('en-IN')}</span>
+              </div>
+            ))}
+            <button 
+              className="btn btn-sm btn-primary rounded-3 px-3 py-1.5 fw-bold d-flex align-items-center gap-1 shadow-2xs"
+              onClick={() => navigate('/bank-accounts')}
+            >
+              Manage Banks <MdArrowForward size={14} />
+            </button>
+          </div>
         </div>
       </div>
 

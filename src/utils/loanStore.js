@@ -1,4 +1,5 @@
 import { getLocalDateString, addMonthsToDate } from './dateUtils';
+import { bankStore } from './bankStore';
 
 
 const KEYS = {
@@ -92,14 +93,16 @@ const defaultSettings = {
 export const loanStore = {
   // Initialize storage if missing or clean reset for fresh user
   init() {
-    if (!localStorage.getItem('rc_fresh_account_clean_v3')) {
+    if (!localStorage.getItem('rc_fresh_account_clean_v6')) {
       localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify([]));
       localStorage.setItem(KEYS.LOANS, JSON.stringify([]));
       localStorage.setItem(KEYS.PAYMENTS, JSON.stringify([]));
       localStorage.setItem(KEYS.REMINDERS, JSON.stringify([]));
       localStorage.setItem(KEYS.COMMUNICATIONS, JSON.stringify([]));
+      localStorage.setItem('rc_udhaar_persons', JSON.stringify([]));
+      localStorage.setItem('rc_udhaar_transactions', JSON.stringify([]));
       localStorage.removeItem('daily_expenses_tracker');
-      localStorage.setItem('rc_fresh_account_clean_v3', 'true');
+      localStorage.setItem('rc_fresh_account_clean_v6', 'true');
     }
 
     if (!localStorage.getItem(KEYS.CUSTOMERS)) {
@@ -233,6 +236,19 @@ export const loanStore = {
       };
       updated = [newLoan, ...list];
 
+      // If bank account selected for loan disbursement, record Bank Debit
+      if (loanData.bankAccountId && loanData.disburseViaBank !== false) {
+        bankStore.syncModuleTransaction('LOAN_DISBURSEMENT', targetLoanId, {
+          bankAccountId: loanData.bankAccountId,
+          type: 'Debit',
+          amount: Number(loanData.totalAmount || 0),
+          date: loanData.startDate || getLocalDateString(),
+          category: 'Loan Disbursement',
+          description: `Disbursed ${loanData.loanName} to ${custName}`,
+          paymentMethod: 'Bank Transfer',
+        });
+      }
+
       // Auto-generate upcoming first EMI payment record
       this.addPaymentRecord({
         loanId: targetLoanId,
@@ -267,7 +283,12 @@ export const loanStore = {
     localStorage.setItem(KEYS.LOANS, JSON.stringify(list));
 
     const payments = this.getPayments().filter((p) => p.loanId !== loanId);
+    const deletedPayments = this.getPayments().filter((p) => p.loanId === loanId);
     localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(payments));
+
+    // Clean up associated bank transactions
+    bankStore.deleteModuleTransactions('LOAN_DISBURSEMENT', loanId);
+    deletedPayments.forEach(p => bankStore.deleteModuleTransactions('EMI_PAYMENT', p.id));
 
     this.notify();
   },
@@ -310,14 +331,20 @@ export const loanStore = {
     const targetPayment = list.find((p) => p.id === paymentId);
     if (!targetPayment) return;
 
+    const paidAmt = Number(details.amount !== undefined ? details.amount : targetPayment.amount);
+    const paidDt = details.paidDate || today;
+    const payMethod = details.paymentMethod || targetPayment.paymentMethod || 'UPI';
+    const targetBankId = details.bankAccountId || targetPayment.bankAccountId || bankStore.getDefaultAccount()?.id;
+
     const updatedPayments = list.map((p) => {
       if (p.id === paymentId) {
         return {
           ...p,
           status: 'Paid',
-          amount: Number(details.amount !== undefined ? details.amount : p.amount),
-          paidDate: details.paidDate || today,
-          paymentMethod: details.paymentMethod || p.paymentMethod || 'UPI',
+          amount: paidAmt,
+          paidDate: paidDt,
+          paymentMethod: payMethod,
+          bankAccountId: targetBankId || null,
           notes: details.notes || p.notes || 'Marked as paid',
         };
       }
@@ -326,13 +353,26 @@ export const loanStore = {
 
     localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(updatedPayments));
 
+    // Sync with Central Bank Store: Credit to bank account
+    if (targetBankId) {
+      bankStore.syncModuleTransaction('EMI_PAYMENT', paymentId, {
+        bankAccountId: targetBankId,
+        type: 'Credit',
+        amount: paidAmt,
+        date: paidDt,
+        category: 'EMI Collection',
+        description: `EMI Collection: ${targetPayment.customerName} (${targetPayment.loanName})`,
+        paymentMethod: payMethod,
+        notes: details.notes || ''
+      });
+    }
+
     // Update target loan due date & next upcoming installment
     if (targetPayment.loanId) {
       const loan = loans.find((l) => l.id === targetPayment.loanId);
       if (loan) {
         const nextDueDate = details.nextDueDate || addMonthsToDate(targetPayment.dueDate || loan.dueDate, 1);
         const updatedLoans = loans.map((l) => {
-
           if (l.id === targetPayment.loanId) {
             return {
               ...l,
@@ -368,6 +408,8 @@ export const loanStore = {
     this.init();
     const list = this.getPayments().filter((p) => p.id !== paymentId);
     localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(list));
+    // Remove linked bank transaction
+    bankStore.deleteModuleTransactions('EMI_PAYMENT', paymentId);
     this.notify();
   },
 
@@ -503,6 +545,8 @@ export const loanStore = {
       templates: this.getCommunicationTemplates(),
       udhaarPersons: JSON.parse(localStorage.getItem('rc_udhaar_persons') || '[]'),
       udhaarTransactions: JSON.parse(localStorage.getItem('rc_udhaar_transactions') || '[]'),
+      bankAccounts: JSON.parse(localStorage.getItem('rc_bank_accounts') || '[]'),
+      bankTransactions: JSON.parse(localStorage.getItem('rc_bank_transactions') || '[]'),
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -527,8 +571,11 @@ export const loanStore = {
       if (parsed.templates) localStorage.setItem(KEYS.COMM_TEMPLATES, JSON.stringify(parsed.templates));
       if (parsed.udhaarPersons) localStorage.setItem('rc_udhaar_persons', JSON.stringify(parsed.udhaarPersons));
       if (parsed.udhaarTransactions) localStorage.setItem('rc_udhaar_transactions', JSON.stringify(parsed.udhaarTransactions));
+      if (parsed.bankAccounts) localStorage.setItem('rc_bank_accounts', JSON.stringify(parsed.bankAccounts));
+      if (parsed.bankTransactions) localStorage.setItem('rc_bank_transactions', JSON.stringify(parsed.bankTransactions));
       this.notify();
       window.dispatchEvent(new CustomEvent('udhaarStoreUpdated'));
+      bankStore.notify();
       return true;
     } catch (e) {
       console.error('Import error:', e);
@@ -537,14 +584,21 @@ export const loanStore = {
   },
 
   resetToDefaults() {
-    localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(defaultCustomers));
-    localStorage.setItem(KEYS.LOANS, JSON.stringify(defaultLoans));
-    localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(defaultPayments));
-    localStorage.setItem(KEYS.REMINDERS, JSON.stringify(defaultReminders));
+    localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify([]));
+    localStorage.setItem(KEYS.LOANS, JSON.stringify([]));
+    localStorage.setItem(KEYS.PAYMENTS, JSON.stringify([]));
+    localStorage.setItem(KEYS.REMINDERS, JSON.stringify([]));
     localStorage.setItem(KEYS.SETTINGS, JSON.stringify(defaultSettings));
-    localStorage.setItem(KEYS.COMMUNICATIONS, JSON.stringify(defaultCommunications));
+    localStorage.setItem(KEYS.COMMUNICATIONS, JSON.stringify([]));
     localStorage.setItem(KEYS.COMM_TEMPLATES, JSON.stringify(defaultCommunicationTemplates));
+    localStorage.setItem('rc_udhaar_persons', JSON.stringify([]));
+    localStorage.setItem('rc_udhaar_transactions', JSON.stringify([]));
+    localStorage.setItem('rc_bank_accounts', JSON.stringify([]));
+    localStorage.setItem('rc_bank_transactions', JSON.stringify([]));
+    localStorage.removeItem('daily_expenses_tracker');
     this.notify();
+    window.dispatchEvent(new CustomEvent('udhaarStoreUpdated'));
+    bankStore.notify();
   },
 
   // Helper EMI Calculator: EMI = Principal / Tenure (Months)

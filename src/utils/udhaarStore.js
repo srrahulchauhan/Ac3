@@ -1,4 +1,5 @@
 import { getLocalDateString } from './dateUtils';
+import { bankStore } from './bankStore';
 
 const KEYS = {
   PERSONS: 'rc_udhaar_persons',
@@ -8,17 +9,10 @@ const KEYS = {
 export const udhaarStore = {
   init() {
     if (!localStorage.getItem(KEYS.PERSONS)) {
-      const defaultPersons = [
-        { id: 'FRD-101', name: 'Amit', phone: '9876543210', notes: 'Personal Udhaar', createdAt: getLocalDateString() }
-      ];
-      localStorage.setItem(KEYS.PERSONS, JSON.stringify(defaultPersons));
+      localStorage.setItem(KEYS.PERSONS, JSON.stringify([]));
     }
     if (!localStorage.getItem(KEYS.TRANSACTIONS)) {
-      const defaultTransactions = [
-        { id: 'UDH-1', personId: 'FRD-101', type: 'Debit', amount: 10000, date: getLocalDateString(), note: 'Udhaar diya', createdAt: Date.now() - 86400000 },
-        { id: 'UDH-2', personId: 'FRD-101', type: 'Credit', amount: 4000, date: getLocalDateString(), note: 'Wapas mila (Part payment)', createdAt: Date.now() }
-      ];
-      localStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(defaultTransactions));
+      localStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify([]));
     }
   },
 
@@ -97,8 +91,11 @@ export const udhaarStore = {
     const filteredPersons = persons.filter((p) => p.id !== id);
     localStorage.setItem(KEYS.PERSONS, JSON.stringify(filteredPersons));
 
-    // Also remove associated transactions
+    // Also remove associated transactions & linked bank transactions
     const transactions = JSON.parse(localStorage.getItem(KEYS.TRANSACTIONS) || '[]');
+    const toDelete = transactions.filter((t) => t.personId === id);
+    toDelete.forEach((t) => bankStore.deleteModuleTransactions('UDHAAR', t.id));
+
     const filteredTx = transactions.filter((t) => t.personId !== id);
     localStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(filteredTx));
 
@@ -146,14 +143,38 @@ export const udhaarStore = {
   addTransaction(tx) {
     this.init();
     const transactions = JSON.parse(localStorage.getItem(KEYS.TRANSACTIONS) || '[]');
+    const persons = this.getPersons();
+    const person = persons.find(p => p.id === tx.personId);
+    const personName = person ? person.name : 'Person';
+
+    const targetBankId = tx.bankAccountId || bankStore.getDefaultAccount()?.id;
+    const isDebit = tx.type === 'Debit'; // Diya (Loan given -> Decreases bank balance)
+
     const newTx = {
       ...tx,
       id: 'UDH-' + Date.now(),
       amount: Math.abs(Number(tx.amount || 0)),
       date: tx.date || getLocalDateString(),
+      bankAccountId: targetBankId || null,
       note: tx.note || '',
       createdAt: Date.now(),
     };
+
+    // Sync with Central Bank Store
+    if (targetBankId) {
+      bankStore.syncModuleTransaction('UDHAAR', newTx.id, {
+        bankAccountId: targetBankId,
+        type: isDebit ? 'Debit' : 'Credit',
+        amount: newTx.amount,
+        date: newTx.date,
+        category: isDebit ? 'Udhaar Given' : 'Udhaar Received',
+        description: isDebit 
+          ? `Udhaar Diya to ${personName}: ${newTx.note || 'Cash/Transfer'}` 
+          : `Udhaar Wapas Mila from ${personName}: ${newTx.note || 'Repayment'}`,
+        paymentMethod: 'Bank / UPI',
+        notes: newTx.note || ''
+      });
+    }
 
     const updated = [newTx, ...transactions];
     localStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(updated));
@@ -166,6 +187,9 @@ export const udhaarStore = {
     const transactions = JSON.parse(localStorage.getItem(KEYS.TRANSACTIONS) || '[]');
     const filtered = transactions.filter((t) => t.id !== id);
     localStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(filtered));
+    
+    // Remove linked central bank transaction
+    bankStore.deleteModuleTransactions('UDHAAR', id);
     this.notify();
   },
 
