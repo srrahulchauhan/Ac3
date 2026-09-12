@@ -6,7 +6,7 @@ import {
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
 import { bankStore } from '../utils/bankStore';
-import { getLocalDateString, addMonthsToDate, formatIndianDate } from '../utils/dateUtils';
+import { getLocalDateString, addMonthsToDate, formatIndianDate, getLastEntryDate, setLastEntryDate } from '../utils/dateUtils';
 import SendStatementModal from '../components/SendStatementModal';
 
 
@@ -16,6 +16,7 @@ const Loans = () => {
   const [loans, setLoans] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -44,7 +45,7 @@ const Loans = () => {
     type: 'Home Loan',
     totalAmount: '',
     emiAmount: '',
-    startDate: getLocalDateString(),
+    startDate: getLastEntryDate('loan', getLocalDateString()),
     tenureMonths: 12,
     dueDate: addMonthsToDate(getLocalDateString(), 1),
     status: 'Active',
@@ -77,6 +78,7 @@ const Loans = () => {
 
   const openAddModal = () => {
     setEditingLoan(null);
+    const lastLoanDate = getLastEntryDate('loan', getLocalDateString());
     setFormData({
       id: 'LOAN-' + Math.floor(1000 + Math.random() * 9000),
       customerId: customers.length > 0 ? customers[0].id : '',
@@ -84,10 +86,12 @@ const Loans = () => {
       type: 'Home Loan',
       totalAmount: '',
       emiAmount: '',
-      startDate: getLocalDateString(),
+      startDate: lastLoanDate,
       tenureMonths: 12,
-      dueDate: addMonthsToDate(getLocalDateString(), 1),
+      dueDate: addMonthsToDate(lastLoanDate, 1),
       status: 'Active',
+      bankAccountId: bankAccounts[0]?.id || '',
+      disburseViaBank: true,
       notes: '',
     });
     setShowAddModal(true);
@@ -140,6 +144,8 @@ const Loans = () => {
     const calculatedEmi = formData.emiAmount !== '' && formData.emiAmount !== undefined
       ? Number(formData.emiAmount)
       : (loanStore.calculateEmi(totalAmt, formData.tenureMonths) || 0);
+
+    setLastEntryDate('loan', formData.startDate || getLocalDateString());
 
     const newLoan = {
       ...formData,
@@ -618,8 +624,46 @@ const Loans = () => {
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold text-muted">Start Date</label>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="form-label small fw-semibold text-muted mb-0">Start Date</label>
+                        {getLastEntryDate('loan') && getLastEntryDate('loan') !== getLocalDateString() && (
+                          <span
+                            className="badge bg-light text-primary border"
+                            style={{ fontSize: '0.62rem', cursor: 'pointer' }}
+                            onClick={() => {
+                              const lastD = getLastEntryDate('loan');
+                              setFormData({ ...formData, startDate: lastD, dueDate: addMonthsToDate(lastD, 1) });
+                            }}
+                            title="Click to use Last Loan Start Date"
+                          >
+                            Last: {formatIndianDate(getLastEntryDate('loan'))}
+                          </span>
+                        )}
+                      </div>
                       <input type="date" className="form-control" name="startDate" value={formData.startDate} onChange={handleFormChange} required />
+                      <div className="d-flex gap-1 mt-1">
+                        <button 
+                          type="button" 
+                          className={`btn btn-xs py-0 px-1.5 rounded-pill ${formData.startDate === getLocalDateString() ? 'btn-primary' : 'btn-light border text-muted'}`}
+                          style={{ fontSize: '0.65rem' }}
+                          onClick={() => setFormData({ ...formData, startDate: getLocalDateString(), dueDate: addMonthsToDate(getLocalDateString(), 1) })}
+                        >
+                          Today
+                        </button>
+                        {getLastEntryDate('loan') && getLastEntryDate('loan') !== getLocalDateString() && (
+                          <button 
+                            type="button" 
+                            className={`btn btn-xs py-0 px-1.5 rounded-pill ${formData.startDate === getLastEntryDate('loan') ? 'btn-primary' : 'btn-light border text-muted'}`}
+                            style={{ fontSize: '0.65rem' }}
+                            onClick={() => {
+                              const lastD = getLastEntryDate('loan');
+                              setFormData({ ...formData, startDate: lastD, dueDate: addMonthsToDate(lastD, 1) });
+                            }}
+                          >
+                            Last Date ({formatIndianDate(getLastEntryDate('loan'))})
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="col-12 col-md-6">

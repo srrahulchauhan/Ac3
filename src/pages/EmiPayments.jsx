@@ -8,7 +8,7 @@ import {
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
 import { bankStore } from '../utils/bankStore';
-import { getLocalDateString, formatIndianDate, addMonthsToDate } from '../utils/dateUtils';
+import { getLocalDateString, formatIndianDate, addMonthsToDate, getLastEntryDate, setLastEntryDate } from '../utils/dateUtils';
 
 const fmtAmt = (a) => a != null ? '₹' + Number(a).toLocaleString('en-IN') : '₹0';
 
@@ -35,7 +35,7 @@ const EmiPayments = () => {
   // Mark Paid Modal state
   const [markingPayment, setMarkingPayment] = useState(null);
   const [paidDetails, setPaidDetails] = useState({
-    paidDate: getLocalDateString(),
+    paidDate: getLastEntryDate('emi', getLocalDateString()),
     paymentMethod: 'UPI',
     paymentType: 'Regular',
     amount: '',
@@ -76,7 +76,7 @@ const EmiPayments = () => {
     const defaultBankId = pay.bankAccountId || bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || '';
     setMarkingPayment(pay);
     setPaidDetails({
-      paidDate: getLocalDateString(),
+      paidDate: getLastEntryDate('emi', getLocalDateString()),
       paymentMethod: pay.paymentMethod || 'UPI',
       bankAccountId: defaultBankId,
       paymentType: 'Regular',
@@ -92,9 +92,12 @@ const EmiPayments = () => {
     if (!markingPayment) return;
 
     const amt = Number(paidDetails.amount || markingPayment.amount);
+    const chosenPaidDate = paidDetails.paidDate || getLocalDateString();
+    setLastEntryDate('emi', chosenPaidDate);
 
     loanStore.markPaymentAsPaid(markingPayment.id, {
       ...paidDetails,
+      paidDate: chosenPaidDate,
       amount: amt,
     });
 
@@ -727,7 +730,19 @@ const EmiPayments = () => {
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-semibold text-muted">Payment Date *</label>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="form-label small fw-semibold text-muted mb-0">Payment Date *</label>
+                        {getLastEntryDate('emi') && getLastEntryDate('emi') !== getLocalDateString() && (
+                          <span
+                            className="badge bg-light text-primary border"
+                            style={{ fontSize: '0.65rem', cursor: 'pointer' }}
+                            onClick={() => setPaidDetails({ ...paidDetails, paidDate: getLastEntryDate('emi') })}
+                            title="Click to use Last Payment Date"
+                          >
+                            Last: {formatIndianDate(getLastEntryDate('emi'))}
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="date"
                         className="form-control fw-bold"
@@ -735,6 +750,26 @@ const EmiPayments = () => {
                         onChange={(e) => setPaidDetails({ ...paidDetails, paidDate: e.target.value })}
                         required
                       />
+                      <div className="d-flex gap-1 mt-1">
+                        <button 
+                          type="button" 
+                          className={`btn btn-xs py-0 px-1.5 rounded-pill ${paidDetails.paidDate === getLocalDateString() ? 'btn-primary' : 'btn-light border text-muted'}`}
+                          style={{ fontSize: '0.65rem' }}
+                          onClick={() => setPaidDetails({ ...paidDetails, paidDate: getLocalDateString() })}
+                        >
+                          Today
+                        </button>
+                        {getLastEntryDate('emi') && getLastEntryDate('emi') !== getLocalDateString() && (
+                          <button 
+                            type="button" 
+                            className={`btn btn-xs py-0 px-1.5 rounded-pill ${paidDetails.paidDate === getLastEntryDate('emi') ? 'btn-primary' : 'btn-light border text-muted'}`}
+                            style={{ fontSize: '0.65rem' }}
+                            onClick={() => setPaidDetails({ ...paidDetails, paidDate: getLastEntryDate('emi') })}
+                          >
+                            Last Date ({formatIndianDate(getLastEntryDate('emi'))})
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

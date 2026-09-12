@@ -8,7 +8,7 @@ import {
 } from 'react-icons/md';
 import * as XLSX from 'xlsx';
 import { bankStore, BANK_PRESETS, ACCOUNT_TYPES } from '../utils/bankStore';
-import { getLocalDateString, formatIndianDate } from '../utils/dateUtils';
+import { getLocalDateString, formatIndianDate, getLastEntryDate, setLastEntryDate } from '../utils/dateUtils';
 import AnimatedNumber from '../components/AnimatedNumber';
 
 // EMV Gold Chip SVG Graphic
@@ -233,7 +233,7 @@ const BankAccounts = () => {
       fromBankId: defaultFrom,
       toBankId: defaultTo,
       amount: '',
-      date: getLocalDateString(),
+      date: getLastEntryDate('bank', getLocalDateString()),
       description: '',
       notes: ''
     });
@@ -260,11 +260,14 @@ const BankAccounts = () => {
     }
 
     try {
+      const chosenDate = transferForm.date || getLocalDateString();
+      setLastEntryDate('bank', chosenDate);
+
       bankStore.recordBankTransfer({
         fromBankId: transferForm.fromBankId,
         toBankId: transferForm.toBankId,
         amount: amt,
-        date: transferForm.date,
+        date: chosenDate,
         description: transferForm.description,
         notes: transferForm.notes
       });
@@ -286,7 +289,7 @@ const BankAccounts = () => {
     setAdjustmentForm({
       bankAccountId: targetBank,
       amount: '',
-      date: getLocalDateString(),
+      date: getLastEntryDate('bank', getLocalDateString()),
       category: type === 'Credit' ? 'Direct Deposit / Capital' : 'Direct Withdrawal / Charges',
       description: '',
       paymentMethod: 'Net Banking',
@@ -304,11 +307,14 @@ const BankAccounts = () => {
       return;
     }
 
+    const chosenDate = adjustmentForm.date || getLocalDateString();
+    setLastEntryDate('bank', chosenDate);
+
     bankStore.recordTransaction({
       bankAccountId: adjustmentForm.bankAccountId,
       type: adjustmentType,
       amount: amt,
-      date: adjustmentForm.date,
+      date: chosenDate,
       category: adjustmentForm.category,
       description: adjustmentForm.description || `${adjustmentType === 'Credit' ? 'Deposit' : 'Withdrawal'} in Bank`,
       paymentMethod: adjustmentForm.paymentMethod,
@@ -1267,7 +1273,19 @@ const BankAccounts = () => {
 
                     {/* Date */}
                     <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold text-muted">Transfer Date *</label>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="form-label small fw-semibold text-muted mb-0">Transfer Date *</label>
+                        {getLastEntryDate('bank') && getLastEntryDate('bank') !== getLocalDateString() && (
+                          <span
+                            className="badge bg-light text-primary border"
+                            style={{ fontSize: '0.62rem', cursor: 'pointer' }}
+                            onClick={() => setTransferForm({ ...transferForm, date: getLastEntryDate('bank') })}
+                            title="Click to use Last Entry Date"
+                          >
+                            Last: {formatIndianDate(getLastEntryDate('bank'))}
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="date"
                         className="form-control"
@@ -1275,6 +1293,26 @@ const BankAccounts = () => {
                         onChange={(e) => setTransferForm({ ...transferForm, date: e.target.value })}
                         required
                       />
+                      <div className="d-flex gap-1 mt-1">
+                        <button 
+                          type="button" 
+                          className={`btn btn-xs py-0 px-1.5 rounded-pill ${transferForm.date === getLocalDateString() ? 'btn-primary' : 'btn-light border text-muted'}`}
+                          style={{ fontSize: '0.65rem' }}
+                          onClick={() => setTransferForm({ ...transferForm, date: getLocalDateString() })}
+                        >
+                          Today
+                        </button>
+                        {getLastEntryDate('bank') && getLastEntryDate('bank') !== getLocalDateString() && (
+                          <button 
+                            type="button" 
+                            className={`btn btn-xs py-0 px-1.5 rounded-pill ${transferForm.date === getLastEntryDate('bank') ? 'btn-primary' : 'btn-light border text-muted'}`}
+                            style={{ fontSize: '0.65rem' }}
+                            onClick={() => setTransferForm({ ...transferForm, date: getLastEntryDate('bank') })}
+                          >
+                            Last Date
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Description */}
@@ -1390,7 +1428,19 @@ const BankAccounts = () => {
 
                     {/* Date */}
                     <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold text-muted">Date *</label>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="form-label small fw-semibold text-muted mb-0">Date *</label>
+                        {getLastEntryDate('bank') && getLastEntryDate('bank') !== getLocalDateString() && (
+                          <span
+                            className="badge bg-light text-primary border"
+                            style={{ fontSize: '0.62rem', cursor: 'pointer' }}
+                            onClick={() => setAdjustmentForm({ ...adjustmentForm, date: getLastEntryDate('bank') })}
+                            title="Click to use Last Entry Date"
+                          >
+                            Last: {formatIndianDate(getLastEntryDate('bank'))}
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="date"
                         className="form-control"
@@ -1398,6 +1448,26 @@ const BankAccounts = () => {
                         onChange={(e) => setAdjustmentForm({ ...adjustmentForm, date: e.target.value })}
                         required
                       />
+                      <div className="d-flex gap-1 mt-1">
+                        <button 
+                          type="button" 
+                          className={`btn btn-xs py-0 px-1.5 rounded-pill ${adjustmentForm.date === getLocalDateString() ? 'btn-primary' : 'btn-light border text-muted'}`}
+                          style={{ fontSize: '0.65rem' }}
+                          onClick={() => setAdjustmentForm({ ...adjustmentForm, date: getLocalDateString() })}
+                        >
+                          Today
+                        </button>
+                        {getLastEntryDate('bank') && getLastEntryDate('bank') !== getLocalDateString() && (
+                          <button 
+                            type="button" 
+                            className={`btn btn-xs py-0 px-1.5 rounded-pill ${adjustmentForm.date === getLastEntryDate('bank') ? 'btn-primary' : 'btn-light border text-muted'}`}
+                            style={{ fontSize: '0.65rem' }}
+                            onClick={() => setAdjustmentForm({ ...adjustmentForm, date: getLastEntryDate('bank') })}
+                          >
+                            Last Date
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Description */}

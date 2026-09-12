@@ -80,3 +80,30 @@ export const calculateMonthsBetween = (startDateStr, endDateStr) => {
   const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
   return months > 0 ? months : 1;
 };
+
+/**
+ * Remember and retrieve the last used entry date for any module
+ * (e.g., 'expenses', 'udhaar', 'bank', 'emi', 'loan')
+ */
+export const getLastEntryDate = (moduleKey, fallback = getLocalDateString()) => {
+  try {
+    const saved = localStorage.getItem(`rc_last_entry_date_${moduleKey}`);
+    if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) {
+      return saved;
+    }
+    return fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
+export const setLastEntryDate = (moduleKey, dateStr) => {
+  if (!dateStr || !moduleKey) return;
+  try {
+    localStorage.setItem(`rc_last_entry_date_${moduleKey}`, dateStr);
+    // Also save as global last entry date
+    localStorage.setItem('rc_last_entry_date_global', dateStr);
+  } catch (e) {
+    console.error('Error saving last entry date:', e);
+  }
+};

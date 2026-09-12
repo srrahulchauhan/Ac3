@@ -8,7 +8,7 @@ import {
 } from 'react-icons/md';
 import { udhaarStore } from '../utils/udhaarStore';
 import { bankStore } from '../utils/bankStore';
-import { formatIndianDate, getLocalDateString } from '../utils/dateUtils';
+import { formatIndianDate, getLocalDateString, getLastEntryDate, setLastEntryDate } from '../utils/dateUtils';
 import AnimatedNumber from '../components/AnimatedNumber';
 
 const UdhaarAccount = () => {
@@ -111,12 +111,16 @@ const UdhaarAccount = () => {
   // Open Add Transaction Modal
   const openTxModal = (personId = '', defaultType = 'Debit') => {
     const defBankId = bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || '';
+    const targetPersonId = personId || (persons[0]?.id || '');
+    const pTxs = targetPersonId ? udhaarStore.getTransactions(targetPersonId) : [];
+    const lastDate = pTxs.length > 0 && pTxs[0]?.date ? pTxs[0].date : getLastEntryDate('udhaar', getLocalDateString());
+
     setTxForm({
-      personId: personId || (persons[0]?.id || ''),
+      personId: targetPersonId,
       type: defaultType,
       amount: '',
       bankAccountId: defBankId,
-      date: getLocalDateString(),
+      date: lastDate,
       note: ''
     });
     setShowTxModal(true);
@@ -126,12 +130,15 @@ const UdhaarAccount = () => {
     e.preventDefault();
     if (!txForm.personId || !Number(txForm.amount)) return;
 
+    const chosenDate = txForm.date || getLocalDateString();
+    setLastEntryDate('udhaar', chosenDate);
+
     udhaarStore.addTransaction({
       personId: txForm.personId,
       type: txForm.type,
       amount: Number(txForm.amount),
       bankAccountId: txForm.bankAccountId || null,
-      date: txForm.date || getLocalDateString(),
+      date: chosenDate,
       note: txForm.note.trim()
     });
 
@@ -772,7 +779,19 @@ const UdhaarAccount = () => {
                     </div>
 
                     <div className="col-5">
-                      <label className="form-label small fw-semibold text-muted">Date *</label>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="form-label small fw-semibold text-muted mb-0">Date *</label>
+                        {getLastEntryDate('udhaar') && getLastEntryDate('udhaar') !== getLocalDateString() && (
+                          <span
+                            className="badge bg-light text-primary border"
+                            style={{ fontSize: '0.62rem', cursor: 'pointer' }}
+                            onClick={() => setTxForm({ ...txForm, date: getLastEntryDate('udhaar') })}
+                            title="Click to use Last Entry Date"
+                          >
+                            Last: {formatIndianDate(getLastEntryDate('udhaar'))}
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="date"
                         className="form-control"
@@ -780,6 +799,26 @@ const UdhaarAccount = () => {
                         onChange={(e) => setTxForm({ ...txForm, date: e.target.value })}
                         required
                       />
+                      <div className="d-flex gap-1 mt-1">
+                        <button 
+                          type="button" 
+                          className={`btn btn-xs py-0 px-1.5 rounded-pill ${txForm.date === getLocalDateString() ? 'btn-primary' : 'btn-light border text-muted'}`}
+                          style={{ fontSize: '0.65rem' }}
+                          onClick={() => setTxForm({ ...txForm, date: getLocalDateString() })}
+                        >
+                          Today
+                        </button>
+                        {getLastEntryDate('udhaar') && getLastEntryDate('udhaar') !== getLocalDateString() && (
+                          <button 
+                            type="button" 
+                            className={`btn btn-xs py-0 px-1.5 rounded-pill ${txForm.date === getLastEntryDate('udhaar') ? 'btn-primary' : 'btn-light border text-muted'}`}
+                            style={{ fontSize: '0.65rem' }}
+                            onClick={() => setTxForm({ ...txForm, date: getLastEntryDate('udhaar') })}
+                          >
+                            Last Date
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

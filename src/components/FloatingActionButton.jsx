@@ -8,7 +8,7 @@ import {
 } from 'react-icons/md';
 import { loanStore } from '../utils/loanStore';
 import { bankStore } from '../utils/bankStore';
-import { getLocalDateString, addMonthsToDate } from '../utils/dateUtils';
+import { getLocalDateString, addMonthsToDate, getLastEntryDate, setLastEntryDate, formatIndianDate } from '../utils/dateUtils';
 
 const LOAN_TYPES = [
   'Home Loan', 'Car Loan', 'Personal Loan', 'Education Loan', 'Credit Card', 'Other Loan'
@@ -37,7 +37,7 @@ const FloatingActionButton = () => {
   const [expenseForm, setExpenseForm] = useState({
     amount: '',
     category: 'Food',
-    date: getLocalDateString(),
+    date: getLastEntryDate('expenses', getLocalDateString()),
     bankAccountId: '',
     paymentMethod: 'UPI',
     notes: ''
@@ -78,7 +78,7 @@ const FloatingActionButton = () => {
     bankAccountId: '',
     paymentType: 'Regular',
     advanceMonths: 1,
-    paidDate: getLocalDateString(),
+    paidDate: getLastEntryDate('emi', getLocalDateString()),
     paymentMethod: 'UPI',
     notes: ''
   });
@@ -212,6 +212,7 @@ const FloatingActionButton = () => {
     const targetBankId = paymentForm.bankAccountId || bankStore.getDefaultAccount()?.id || bankAccounts[0]?.id || null;
 
     if (existingPayments.length > 0) {
+      setLastEntryDate('emi', paymentForm.paidDate || getLocalDateString());
       loanStore.markPaymentAsPaid(existingPayments[0].id, {
         paidDate: paymentForm.paidDate,
         amount: finalAmount,
@@ -221,6 +222,8 @@ const FloatingActionButton = () => {
         notes: paymentForm.notes || (isAdvance ? `Advance EMI payment for ${advMonths} month(s)` : 'Direct EMI Payment')
       });
     } else {
+      const chosenPaidDate = paymentForm.paidDate || getLocalDateString();
+      setLastEntryDate('emi', chosenPaidDate);
       const newPayId = 'PAY-' + Math.floor(1000 + Math.random() * 9000);
       loanStore.addPaymentRecord({
         id: newPayId,
@@ -230,7 +233,7 @@ const FloatingActionButton = () => {
         loanName: selectedLoan.loanName,
         amount: finalAmount,
         bankAccountId: targetBankId,
-        paidDate: paymentForm.paidDate,
+        paidDate: chosenPaidDate,
         dueDate: selectedLoan.dueDate,
         paymentMethod: isAdvance ? 'Advance Payment' : paymentForm.paymentMethod,
         notes: paymentForm.notes || (isAdvance ? `Advance EMI payment for ${advMonths} month(s)` : 'Direct EMI Payment'),
@@ -241,7 +244,7 @@ const FloatingActionButton = () => {
           bankAccountId: targetBankId,
           type: 'Credit',
           amount: finalAmount,
-          date: paymentForm.paidDate,
+          date: chosenPaidDate,
           category: 'EMI Collection',
           description: `EMI Collection: ${selectedLoan.customerName} (${selectedLoan.loanName})`,
           paymentMethod: paymentForm.paymentMethod
@@ -259,13 +262,16 @@ const FloatingActionButton = () => {
     const val = Number(expenseForm.amount);
     if (!val || val <= 0) return;
 
+    const chosenExpDate = expenseForm.date || getLocalDateString();
+    setLastEntryDate('expenses', chosenExpDate);
+
     const selectedBankId = expenseForm.bankAccountId || bankStore.getDefaultAccount()?.id || (bankAccounts[0]?.id || null);
     const newExpId = Date.now().toString();
     const newExp = {
       id: newExpId,
       amount: val,
       category: expenseForm.category || 'Food',
-      date: expenseForm.date || getLocalDateString(),
+      date: chosenExpDate,
       bankAccountId: selectedBankId,
       paymentMethod: expenseForm.paymentMethod || 'UPI',
       notes: expenseForm.notes || ''
@@ -284,7 +290,7 @@ const FloatingActionButton = () => {
         bankAccountId: selectedBankId,
         type: 'Debit',
         amount: val,
-        date: expenseForm.date || getLocalDateString(),
+        date: chosenExpDate,
         category: `Expense - ${expenseForm.category || 'Other'}`,
         description: expenseForm.notes || `${expenseForm.category || 'Daily'} Expense`,
         paymentMethod: expenseForm.paymentMethod || 'UPI',
@@ -295,7 +301,7 @@ const FloatingActionButton = () => {
     setExpenseForm({
       amount: '',
       category: 'Food',
-      date: getLocalDateString(),
+      date: chosenExpDate,
       bankAccountId: '',
       paymentMethod: 'UPI',
       notes: ''

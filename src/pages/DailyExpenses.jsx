@@ -11,7 +11,7 @@ import {
   LineElement, BarElement, Title, Tooltip, Legend, ArcElement 
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
-import { getLocalDateString, formatIndianDate } from '../utils/dateUtils';
+import { getLocalDateString, formatIndianDate, getLastEntryDate, setLastEntryDate } from '../utils/dateUtils';
 import { bankStore } from '../utils/bankStore';
 
 ChartJS.register(
@@ -124,7 +124,7 @@ const DailyExpenses = () => {
     setFormData({
       amount: '',
       category: cat,
-      date: getLocalDateString(),
+      date: getLastEntryDate('expenses', getLocalDateString()),
       bankAccountId: defBank,
       paymentMethod: 'UPI',
       notes: ''
@@ -166,6 +166,9 @@ const DailyExpenses = () => {
     }
 
     const selectedBankId = formData.bankAccountId || bankStore.getDefaultAccount()?.id || null;
+
+    // Remember last used entry date
+    setLastEntryDate('expenses', formData.date);
 
     if (editingId) {
       const updated = expenses.map(item => {
@@ -759,7 +762,19 @@ const DailyExpenses = () => {
                   {/* Date & Payment Method */}
                   <div className="row g-2 mb-3">
                     <div className="col-6">
-                      <label className="form-label text-muted fw-semibold small mb-1">Date</label>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="form-label text-muted fw-semibold small mb-0">Date</label>
+                        {getLastEntryDate('expenses') && getLastEntryDate('expenses') !== getLocalDateString() && (
+                          <span 
+                            className="badge bg-light text-primary border cursor-pointer" 
+                            style={{ fontSize: '0.65rem', cursor: 'pointer' }}
+                            onClick={() => setFormData({ ...formData, date: getLastEntryDate('expenses') })}
+                            title="Click to use Last Entry Date"
+                          >
+                            Last: {formatIndianDate(getLastEntryDate('expenses'))}
+                          </span>
+                        )}
+                      </div>
                       <input 
                         type="date" 
                         className="form-control" 
@@ -767,6 +782,26 @@ const DailyExpenses = () => {
                         onChange={e => setFormData({ ...formData, date: e.target.value })}
                         required 
                       />
+                      <div className="d-flex gap-1 mt-1">
+                        <button 
+                          type="button" 
+                          className={`btn btn-xs py-0 px-1.5 rounded-pill ${formData.date === getLocalDateString() ? 'btn-primary' : 'btn-light border text-muted'}`}
+                          style={{ fontSize: '0.65rem' }}
+                          onClick={() => setFormData({ ...formData, date: getLocalDateString() })}
+                        >
+                          Today
+                        </button>
+                        {getLastEntryDate('expenses') && getLastEntryDate('expenses') !== getLocalDateString() && (
+                          <button 
+                            type="button" 
+                            className={`btn btn-xs py-0 px-1.5 rounded-pill ${formData.date === getLastEntryDate('expenses') ? 'btn-primary' : 'btn-light border text-muted'}`}
+                            style={{ fontSize: '0.65rem' }}
+                            onClick={() => setFormData({ ...formData, date: getLastEntryDate('expenses') })}
+                          >
+                            Last Date ({formatIndianDate(getLastEntryDate('expenses'))})
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="col-6">
                       <label className="form-label text-muted fw-semibold small mb-1">Payment Method</label>
