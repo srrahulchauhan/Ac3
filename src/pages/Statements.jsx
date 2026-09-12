@@ -347,7 +347,7 @@ const Statements = () => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(90, 100, 115);
-    doc.text(`Managed by: ${settings.ownerName || 'Rahul Chauhan'} • ${settings.companyTagline || 'Smart Loan, EMI & Account Management'}`, 14, 24);
+    doc.text(`Managed by: ${settings.ownerName || 'Accountant'} • ${settings.companyTagline || 'Smart Loan, EMI & Account Management'}`, 14, 24);
     doc.text(`Email: ${settings.email || 'support@raccountant.com'} | Phone: ${settings.phone || '+91 98765 43210'} | GST: ${settings.gstNumber || 'N/A'}`, 14, 29);
     if (settings.address) {
       doc.text(`Address: ${settings.address}`, 14, 34);
@@ -432,7 +432,7 @@ const Statements = () => {
       14,
       Math.min(finalY + 12, 280)
     );
-    doc.text(`Authorized by: ${settings.ownerName || 'Rahul Chauhan'} (${settings.companyName || 'R Accountant'})`, 14, Math.min(finalY + 17, 285));
+    doc.text(`Authorized by: ${settings.ownerName || 'Accountant'} (${settings.companyName || 'R Accountant'})`, 14, Math.min(finalY + 17, 285));
 
     doc.save(`Statement_${custName.replace(/\s+/g, '_')}_${getLocalDateString()}.pdf`);
   };
@@ -715,7 +715,7 @@ const Statements = () => {
               )}
               <div>
                 <h4 className="fw-bold text-primary mb-0">{settings.companyName || 'R Accountant'}</h4>
-                <div className="text-dark small fw-semibold">Managed by: {settings.ownerName || 'Rahul Chauhan'}</div>
+                <div className="text-dark small fw-semibold">Managed by: {settings.ownerName || 'Accountant'}</div>
               </div>
             </div>
             <div className="text-muted small mt-1">{settings.companyTagline || 'Smart Loan, EMI & Account Management'}</div>
@@ -916,7 +916,7 @@ const Statements = () => {
             {settings.invoiceFooterMessage || 'This is a computer-generated account statement and does not require a physical signature.'}
           </span>
           <span className="fw-bold text-dark">
-            © 2026 {settings.companyName || 'R Accountant'}. Managed by {settings.ownerName || 'Rahul Chauhan'}.
+            © 2026 {settings.companyName || 'R Accountant'}. Managed by {settings.ownerName || 'Accountant'}.
           </span>
         </div>
       </div>

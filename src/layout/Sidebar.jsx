@@ -42,7 +42,7 @@ const Sidebar = ({ closeMobileSidebar }) => {
   ];
 
   const brandName = settings.companyName || 'R Accountant';
-  const ownerDisplayName = settings.ownerName || (userData?.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : 'Rahul Chauhan');
+  const ownerDisplayName = settings.ownerName || (userData?.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : 'Accountant');
 
   return (
     <div className="d-flex flex-column h-100 p-3 bg-white border-end shadow-sm" style={{ minHeight: '100vh' }}>

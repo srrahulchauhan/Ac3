@@ -20,7 +20,7 @@ const TEMPLATE_KEYS = [
 const Settings = () => {
   const [settings, setSettings] = useState({
     companyName: 'R Accountant',
-    ownerName: 'Rahul Chauhan',
+    ownerName: 'Accountant',
     companyTagline: 'Smart Loan, EMI & Account Management',
     companyLogo: '',
     phone: '',
@@ -29,7 +29,7 @@ const Settings = () => {
     gstNumber: '',
     panNumber: '',
     upiId: '',
-    invoiceFooterMessage: 'Thank you for your business. For any questions, please contact Rahul Chauhan (R Accountant).',
+    invoiceFooterMessage: 'Thank you for your business. For any questions, please contact support (R Accountant).',
     currencySymbol: '₹',
     autoSendReminders: true,
     whatsappSenderName: 'R Accountant',
@@ -188,7 +188,7 @@ const Settings = () => {
                 {/* Owner / Admin Name */}
                 <div className="col-12 col-md-6">
                   <label className="form-label small fw-semibold text-muted">Owner / Admin Name *</label>
-                  <input type="text" className="form-control fw-bold" name="ownerName" value={settings.ownerName} onChange={handleChange} required placeholder="Rahul Chauhan" />
+                  <input type="text" className="form-control fw-bold" name="ownerName" value={settings.ownerName} onChange={handleChange} required placeholder="Accountant" />
                 </div>
 
                 {/* Tagline */}
@@ -205,7 +205,7 @@ const Settings = () => {
 
                 <div className="col-12 col-md-6">
                   <label className="form-label small fw-semibold text-muted">Email Address</label>
-                  <input type="email" className="form-control" name="email" value={settings.email} onChange={handleChange} placeholder="rahul@raccountant.com" />
+                  <input type="email" className="form-control" name="email" value={settings.email} onChange={handleChange} placeholder="admin@raccountant.com" />
                 </div>
 
                 {/* GST & PAN */}
@@ -228,7 +228,7 @@ const Settings = () => {
                 {/* UPI ID */}
                 <div className="col-12 col-md-6">
                   <label className="form-label small fw-semibold text-muted">UPI ID for Payments</label>
-                  <input type="text" className="form-control font-monospace" name="upiId" value={settings.upiId} onChange={handleChange} placeholder="rahul@upi" />
+                  <input type="text" className="form-control font-monospace" name="upiId" value={settings.upiId} onChange={handleChange} placeholder="accountant@upi" />
                   <small className="text-muted d-block mt-0.5" style={{ fontSize: '0.68rem' }}>Direct UPI address for borrower collections</small>
                 </div>
 

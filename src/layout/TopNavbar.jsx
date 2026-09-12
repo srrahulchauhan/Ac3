@@ -102,7 +102,7 @@ const TopNavbar = ({ toggleSidebar }) => {
     }
   };
 
-  const ownerDisplayName = settings.ownerName || (user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Rahul Chauhan');
+  const ownerDisplayName = settings.ownerName || (user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Accountant');
   const brandName = settings.companyName || 'R Accountant';
 
   return (
@@ -215,7 +215,7 @@ const TopNavbar = ({ toggleSidebar }) => {
           <ul className="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2" aria-labelledby="profileDropdown">
             <li className="px-3 py-2 border-bottom">
               <span className="fw-bold text-dark d-block">{ownerDisplayName}</span>
-              <small className="text-muted">{settings.email || currentUser?.email || 'rahul@raccountant.com'}</small>
+              <small className="text-muted">{settings.email || currentUser?.email || 'admin@raccountant.com'}</small>
             </li>
             <li>
               <button className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary" onClick={() => navigate('/settings')}>

@@ -49,9 +49,9 @@ export const AuthProvider = ({ children }) => {
     if (passcode === '20002') {
       const user = {
         uid: 'r_accountant_owner',
-        firstName: 'Rahul',
-        lastName: 'Chauhan',
-        email: 'rahul@raccountant.com',
+        firstName: 'Account',
+        lastName: 'Admin',
+        email: 'admin@raccountant.com',
         phone: '',
         role: 'Owner / Admin',
         passcodeAuth: true,

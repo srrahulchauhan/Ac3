@@ -82,7 +82,7 @@ const Layout = () => {
           </div>
 
           <footer className="py-2.5 px-4 bg-white border-top text-center text-muted small" style={{ fontSize: '0.78rem' }}>
-            <span>© 2026 {settings.companyName || 'R Accountant'}. Managed by {settings.ownerName || 'Rahul Chauhan'}.</span>
+            <span>© 2026 {settings.companyName || 'R Accountant'}. Managed by {settings.ownerName || 'Accountant'}.</span>
           </footer>
 
           <ScrollArrows />

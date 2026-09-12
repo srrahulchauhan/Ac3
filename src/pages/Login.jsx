@@ -197,7 +197,7 @@ const Login = () => {
 
         <div className="text-center mt-4">
           <small style={{ color: '#64748b', fontSize: '0.78rem' }}>
-            © 2026 R Accountant. Managed by Rahul Chauhan.
+            © 2026 R Accountant. Smart Financial &amp; Loan Management.
           </small>
         </div>
 

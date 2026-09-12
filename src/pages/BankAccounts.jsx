@@ -1088,7 +1088,7 @@ const BankAccounts = () => {
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="e.g. Rahul Chauhan"
+                        placeholder="e.g. Account Holder Name"
                         value={accountForm.accountHolderName}
                         onChange={(e) => setAccountForm({ ...accountForm, accountHolderName: e.target.value })}
                         required

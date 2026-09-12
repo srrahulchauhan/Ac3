@@ -66,7 +66,7 @@ const defaultCommunicationTemplates = {
 
 const defaultSettings = {
   companyName: 'R Accountant',
-  ownerName: 'Rahul Chauhan',
+  ownerName: 'Accountant',
   companyTagline: 'Smart Loan, EMI & Account Management',
   companyLogo: '',
   phone: '',
@@ -75,7 +75,7 @@ const defaultSettings = {
   gstNumber: '',
   panNumber: '',
   upiId: '',
-  invoiceFooterMessage: 'Thank you for your business. For any questions, please contact Rahul Chauhan (R Accountant).',
+  invoiceFooterMessage: 'Thank you for your business. For any questions, please contact support (R Accountant).',
   currencySymbol: '₹',
   autoSendReminders: true,
   whatsappSenderName: 'R Accountant',
@@ -460,8 +460,11 @@ export const loanStore = {
       if (!merged.companyName || merged.companyName.includes('EquiLoan') || merged.companyName.includes('RC Accountant')) {
         merged.companyName = 'R Accountant';
       }
-      if (!merged.ownerName) {
-        merged.ownerName = 'Rahul Chauhan';
+      if (merged.ownerName === 'Rahul Chauhan' || !merged.ownerName) {
+        merged.ownerName = 'Accountant';
+      }
+      if (merged.invoiceFooterMessage && merged.invoiceFooterMessage.includes('Rahul Chauhan')) {
+        merged.invoiceFooterMessage = 'Thank you for your business. For any questions, please contact support (R Accountant).';
       }
       if (!merged.companyTagline) {
         merged.companyTagline = 'Smart Loan, EMI & Account Management';
