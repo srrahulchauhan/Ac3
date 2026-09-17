@@ -122,7 +122,7 @@ const TopNavbar = ({ toggleSidebar }) => {
               <span>{brandName}</span>
               <span className="text-muted fw-normal d-none d-sm-inline" style={{ fontSize: '0.85rem' }}>| {currentTitle}</span>
             </h5>
-            <small className="text-muted d-none d-sm-block" style={{ fontSize: '0.7rem' }}>{settings.companyTagline || 'Smart Loan, EMI & Account Management'}</small>
+            <small className="text-muted d-none d-sm-block" style={{ fontSize: '0.7rem' }}>{settings.companyTagline || 'Rahul'}</small>
           </div>
         </div>
 

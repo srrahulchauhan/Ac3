@@ -67,7 +67,8 @@ const defaultCommunicationTemplates = {
 const defaultSettings = {
   companyName: 'R Accountant',
   ownerName: 'Accountant',
-  companyTagline: 'Smart Loan, EMI & Account Management',
+  companyTagline: 'Rahul',
+  securityPasscode: '20002',
   companyLogo: '',
   phone: '',
   email: '',
@@ -466,8 +467,8 @@ export const loanStore = {
       if (merged.invoiceFooterMessage && merged.invoiceFooterMessage.includes('Rahul Chauhan')) {
         merged.invoiceFooterMessage = 'Thank you for your business. For any questions, please contact support (R Accountant).';
       }
-      if (!merged.companyTagline) {
-        merged.companyTagline = 'Smart Loan, EMI & Account Management';
+      if (!merged.companyTagline || merged.companyTagline.includes('Smart Loan') || merged.companyTagline.includes('Smart EMI') || merged.companyTagline.includes('Loans & Accounting')) {
+        merged.companyTagline = 'Rahul';
       }
       return merged;
     } catch {

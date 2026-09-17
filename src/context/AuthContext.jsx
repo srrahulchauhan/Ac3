@@ -10,17 +10,27 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load mock user from localStorage on init
-    const storedUser = localStorage.getItem('account_mock_user');
-    if (storedUser) {
+    // Require passcode verification on app open / session start
+    const isSessionAuth = sessionStorage.getItem('account_session_authenticated');
+    const storedUser = sessionStorage.getItem('account_mock_user') || localStorage.getItem('account_mock_user');
+    
+    if (isSessionAuth === 'true' && storedUser) {
       const parsed = JSON.parse(storedUser);
       setCurrentUser({ uid: parsed.uid, email: parsed.email });
       setUserData(parsed);
+    } else {
+      localStorage.removeItem('account_mock_user');
+      sessionStorage.removeItem('account_mock_user');
+      sessionStorage.removeItem('account_session_authenticated');
+      setCurrentUser(null);
+      setUserData(null);
     }
     setLoading(false);
   }, []);
 
   const persistUser = (user) => {
+    sessionStorage.setItem('account_session_authenticated', 'true');
+    sessionStorage.setItem('account_mock_user', JSON.stringify(user));
     localStorage.setItem('account_mock_user', JSON.stringify(user));
     setCurrentUser({ uid: user.uid, email: user.email });
     setUserData(user);
@@ -88,6 +98,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    sessionStorage.removeItem('account_session_authenticated');
+    sessionStorage.removeItem('account_mock_user');
     localStorage.removeItem('account_mock_user');
     setCurrentUser(null);
     setUserData(null);

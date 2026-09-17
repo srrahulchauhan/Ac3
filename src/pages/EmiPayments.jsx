@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
   MdSearch, MdPayment, MdCheckCircle, MdWarning, MdHourglassEmpty, 
-  MdDelete, MdAddCircle, MdNotifications, MdFastForward,
+  MdDelete, MdAddCircle, MdNotifications, MdFastForward, MdUpdate,
   MdViewList, MdViewModule, MdFilterList, MdRefresh, MdCalendarToday,
   MdPhone, MdAccountBalance, MdCheck
 } from 'react-icons/md';
@@ -775,14 +775,35 @@ const EmiPayments = () => {
 
 
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold text-muted">Next Due Date *</label>
-                    <input
-                      type="date"
-                      className="form-control fw-bold"
-                      value={paidDetails.nextDueDate}
-                      onChange={(e) => setPaidDetails({ ...paidDetails, nextDueDate: e.target.value })}
-                      required
-                    />
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <label className="form-label small fw-semibold text-muted mb-0">Next Due Date *</label>
+                      <button
+                        type="button"
+                        className="btn btn-link btn-sm p-0 text-decoration-none fw-bold text-primary small d-flex align-items-center gap-1"
+                        onClick={() => setPaidDetails(prev => ({ ...prev, nextDueDate: addMonthsToDate(prev.nextDueDate || getLocalDateString(), 1) }))}
+                        title="Continue to Next Month (+1 Month)"
+                      >
+                        <MdUpdate size={14} /> +1 Month
+                      </button>
+                    </div>
+                    <div className="input-group">
+                      <input
+                        type="date"
+                        className="form-control fw-bold"
+                        value={paidDetails.nextDueDate}
+                        onChange={(e) => setPaidDetails({ ...paidDetails, nextDueDate: e.target.value })}
+                        required
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-outline-primary fw-bold text-nowrap d-flex align-items-center gap-1 shadow-2xs" 
+                        onClick={() => setPaidDetails(prev => ({ ...prev, nextDueDate: addMonthsToDate(prev.nextDueDate || getLocalDateString(), 1) }))}
+                        title="Advance Next Due Date to Next Month (+1 Month)"
+                      >
+                        <MdFastForward size={18} /> +1 Mo
+                      </button>
+                    </div>
+                    <small className="text-muted d-block mt-1" style={{ fontSize: '0.68rem' }}>Click "+1 Mo" to auto-continue next month's EMI due date</small>
                   </div>
 
                   <div className="mb-2">

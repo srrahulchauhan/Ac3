@@ -52,7 +52,7 @@ const Sidebar = ({ closeMobileSidebar }) => {
         </div>
         <div className="ms-2 flex-grow-1 overflow-hidden">
           <h5 className="mb-0 fw-bold text-dark text-truncate" style={{ letterSpacing: '-0.5px', fontSize: '1.05rem' }}>{brandName}</h5>
-          <small className="text-muted text-uppercase fw-semibold" style={{ fontSize: '0.62rem', letterSpacing: '0.5px' }}>{settings.companyTagline || 'Loans & Accounting'}</small>
+          <small className="text-muted text-uppercase fw-semibold" style={{ fontSize: '0.62rem', letterSpacing: '0.5px' }}>{settings.companyTagline || 'Rahul'}</small>
         </div>
 
         <button className="btn btn-sm text-muted ms-auto d-lg-none" onClick={closeMobileSidebar}>✕</button>

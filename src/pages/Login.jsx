@@ -69,7 +69,7 @@ const Login = () => {
             <img src={logo} alt="R Accountant" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <h3 className="fw-bold mb-1 text-white" style={{ letterSpacing: '-0.5px' }}>R Accountant</h3>
-          <p className="text-slate-400 small mb-0" style={{ color: '#94a3b8' }}>Smart Loan, EMI &amp; Account Management</p>
+          <p className="text-slate-400 small mb-0" style={{ color: '#94a3b8' }}>Rahul</p>
         </div>
 
         {/* Lock Card */}

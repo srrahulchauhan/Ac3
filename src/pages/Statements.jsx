@@ -347,7 +347,7 @@ const Statements = () => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(90, 100, 115);
-    doc.text(`Managed by: ${settings.ownerName || 'Accountant'} • ${settings.companyTagline || 'Smart Loan, EMI & Account Management'}`, 14, 24);
+    doc.text(`Managed by: ${settings.ownerName || 'Accountant'} • ${settings.companyTagline || 'Rahul'}`, 14, 24);
     doc.text(`Email: ${settings.email || 'support@raccountant.com'} | Phone: ${settings.phone || '+91 98765 43210'} | GST: ${settings.gstNumber || 'N/A'}`, 14, 29);
     if (settings.address) {
       doc.text(`Address: ${settings.address}`, 14, 34);
@@ -718,7 +718,7 @@ const Statements = () => {
                 <div className="text-dark small fw-semibold">Managed by: {settings.ownerName || 'Accountant'}</div>
               </div>
             </div>
-            <div className="text-muted small mt-1">{settings.companyTagline || 'Smart Loan, EMI & Account Management'}</div>
+            <div className="text-muted small mt-1">{settings.companyTagline || 'Rahul'}</div>
             {settings.address && <div className="text-muted small">{settings.address}</div>}
             <div className="text-muted small mt-0.5">
               {settings.phone && `Phone: ${settings.phone} • `}

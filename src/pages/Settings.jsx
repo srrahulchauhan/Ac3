@@ -21,7 +21,7 @@ const Settings = () => {
   const [settings, setSettings] = useState({
     companyName: 'R Accountant',
     ownerName: 'Accountant',
-    companyTagline: 'Smart Loan, EMI & Account Management',
+    companyTagline: 'Rahul',
     companyLogo: '',
     phone: '',
     email: '',
@@ -194,7 +194,7 @@ const Settings = () => {
                 {/* Tagline */}
                 <div className="col-12">
                   <label className="form-label small fw-semibold text-muted">Business Tagline</label>
-                  <input type="text" className="form-control" name="companyTagline" value={settings.companyTagline} onChange={handleChange} placeholder="Smart Loan, EMI & Account Management" />
+                  <input type="text" className="form-control" name="companyTagline" value={settings.companyTagline} onChange={handleChange} placeholder="Rahul" />
                 </div>
 
                 {/* Mobile & Email */}
