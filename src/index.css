@@ -35,6 +35,39 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Blinking Red Animation for Incomplete / Pending Tasks */
+@keyframes blink-red {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.9);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+  }
+}
+
+.blinking-pending-card {
+  animation: blink-red 1.6s infinite ease-in-out;
+}
+
+@keyframes text-pulse-red {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.blinking-pending-text {
+  animation: text-pulse-red 1.2s infinite ease-in-out;
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
 /* Page Entrance Animation */
 .page-transition {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;

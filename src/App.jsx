@@ -12,6 +12,7 @@ import Reports from './pages/Reports';
 import CalendarView from './pages/CalendarView';
 import Settings from './pages/Settings';
 import UdhaarAccount from './pages/UdhaarAccount';
+import StudyTracker from './pages/StudyTracker';
 import Login from './pages/Login';
 
 import { useAuth } from './context/AuthContext';
@@ -27,7 +28,9 @@ function App() {
 
       {/* Protected Main Application Routes */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<StudyTracker />} />
+        <Route path="study" element={<StudyTracker />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="bank-accounts" element={<BankAccounts />} />
         <Route path="daily-expenses" element={<DailyExpenses />} />
         <Route path="udhaar" element={<UdhaarAccount />} />
