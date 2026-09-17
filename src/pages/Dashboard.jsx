@@ -58,6 +58,8 @@ const Dashboard = () => {
     .filter(p => p.status === 'Paid' && p.paidDate && p.paidDate.startsWith(currentMonthStr))
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 
+  const [custPendingSearch, setCustPendingSearch] = useState('');
+
   // Pending EMI Amount (Upcoming / Pending)
   const pendingEmiAmount = payments
     .filter(p => p.status === 'Upcoming' || p.status === 'Pending')
@@ -66,6 +68,60 @@ const Dashboard = () => {
   // Overdue EMI Amount
   const overduePayments = payments.filter(p => p.status === 'Overdue' || (p.status !== 'Paid' && p.dueDate && p.dueDate < todayStr));
   const overdueEmiAmount = overduePayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+
+  // Total Unpaid Pending Payments & Amount (Sabka Total Pending EMI)
+  const unpaidPayments = payments.filter(p => p.status !== 'Paid');
+  const totalPendingEmiAmount = unpaidPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const totalPendingEmiCount = unpaidPayments.length;
+
+  // Customer-wise Pending EMI Breakdown ("Sabka Pending EMI Total")
+  const customerPendingBreakdown = useMemo(() => {
+    if (!customers || customers.length === 0) return [];
+
+    return customers.map(cust => {
+      const custActiveLoans = loans.filter(l => l.customerId === cust.id && l.status === 'Active');
+      const custUnpaid = payments.filter(p => p.customerId === cust.id && p.status !== 'Paid');
+
+      const overdueAmt = custUnpaid
+        .filter(p => p.status === 'Overdue' || (p.dueDate && p.dueDate < todayStr))
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+      const upcomingAmt = custUnpaid
+        .filter(p => p.status !== 'Overdue' && (!p.dueDate || p.dueDate >= todayStr))
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+      const totalPending = overdueAmt + upcomingAmt;
+      const earliestDueDate = custUnpaid.length > 0
+        ? custUnpaid.map(p => p.dueDate).filter(Boolean).sort()[0]
+        : null;
+
+      const firstLoanName = custActiveLoans[0]?.loanName || custUnpaid[0]?.loanName || 'Loan EMI';
+
+      return {
+        id: cust.id,
+        name: cust.name,
+        phone: cust.phone,
+        activeLoansCount: custActiveLoans.length,
+        pendingCount: custUnpaid.length,
+        overdueAmt,
+        upcomingAmt,
+        totalPending,
+        earliestDueDate,
+        firstLoanName
+      };
+    })
+    .filter(c => c.totalPending > 0 || c.activeLoansCount > 0)
+    .sort((a, b) => b.totalPending - a.totalPending);
+  }, [customers, loans, payments, todayStr]);
+
+  const filteredCustomerBreakdown = useMemo(() => {
+    if (!custPendingSearch) return customerPendingBreakdown;
+    const q = custPendingSearch.toLowerCase();
+    return customerPendingBreakdown.filter(c =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q)
+    );
+  }, [customerPendingBreakdown, custPendingSearch]);
 
   // Upcoming EMI Due Today
   const dueTodayPayments = payments.filter(p => p.dueDate === todayStr && p.status !== 'Paid');
@@ -307,8 +363,31 @@ const Dashboard = () => {
 
       {/* Second KPI Mini Row */}
       <div className="row g-3 mb-4">
+        {/* Total Pending EMI (Sabka Total) */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div 
+            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100 hover-lift transition-all"
+            onClick={() => navigate('/emi-payments')}
+            style={{ cursor: 'pointer' }}
+            title="Click to view all pending EMI installments"
+          >
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <small className="text-muted fw-semibold text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Total Pending EMI</small>
+                <h3 className="fw-bold text-dark my-1">
+                  {loading ? <div className="skeleton" style={{ width: '90px', height: '28px' }}></div> : <AnimatedNumber value={totalPendingEmiAmount} isCurrency />}
+                </h3>
+                <small className="text-warning fw-bold">{totalPendingEmiCount} Pending Installment{totalPendingEmiCount !== 1 ? 's' : ''}</small>
+              </div>
+              <div className="bg-warning bg-opacity-15 text-dark rounded-3 p-2.5">
+                <MdHourglassEmpty size={24} />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* This Month's Collection */}
-        <div className="col-12 col-sm-6 col-xl-4">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
             <div className="d-flex align-items-center justify-content-between">
               <div>
@@ -326,7 +405,7 @@ const Dashboard = () => {
         </div>
 
         {/* Overdue Amount */}
-        <div className="col-12 col-sm-6 col-xl-4">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
             <div className="d-flex align-items-center justify-content-between">
               <div>
@@ -344,7 +423,7 @@ const Dashboard = () => {
         </div>
 
         {/* Due Today */}
-        <div className="col-12 col-sm-12 col-xl-4">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
             <div className="d-flex align-items-center justify-content-between">
               <div>
@@ -360,6 +439,117 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Customer-Wise Pending EMI Breakdown ("Sabka Pending EMI Total") ── */}
+      <div className="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+          <div>
+            <div className="d-flex align-items-center gap-2 mb-1">
+              <h5 className="fw-bold text-dark mb-0">Sabka Pending EMI Total Summary</h5>
+              <span className="badge bg-warning text-dark font-monospace px-2.5 py-1 rounded-pill fw-bold">
+                Total: ₹{totalPendingEmiAmount.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <p className="text-muted small mb-0">Borrower-wise list of total pending EMI amounts and overdue balances</p>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <div className="input-group input-group-sm" style={{ maxWidth: '240px' }}>
+              <input
+                type="text"
+                className="form-control rounded-start-3"
+                placeholder="Search borrower name/phone..."
+                value={custPendingSearch}
+                onChange={(e) => setCustPendingSearch(e.target.value)}
+              />
+              {custPendingSearch && (
+                <button className="btn btn-outline-secondary" onClick={() => setCustPendingSearch('')}>✕</button>
+              )}
+            </div>
+            <button className="btn btn-sm btn-outline-primary rounded-3 fw-bold" onClick={() => navigate('/emi-payments')}>
+              Full EMI Ledger
+            </button>
+          </div>
+        </div>
+
+        {filteredCustomerBreakdown.length === 0 ? (
+          <div className="text-center py-4 text-muted bg-light rounded-3">
+            <MdCheckCircle size={36} className="text-success opacity-50 mb-2" />
+            <p className="small mb-0">No pending EMI accounts found matching your criteria!</p>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="bg-light text-muted small">
+                <tr>
+                  <th className="py-2.5">Borrower Name</th>
+                  <th>Phone</th>
+                  <th>Active Loans</th>
+                  <th>Overdue EMI</th>
+                  <th>Upcoming EMI</th>
+                  <th className="text-end">Total Pending EMI</th>
+                  <th className="text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomerBreakdown.map((cust) => (
+                  <tr key={cust.id}>
+                    <td>
+                      <div className="fw-bold text-dark">{cust.name}</div>
+                      <small className="text-muted font-monospace">{cust.id}</small>
+                    </td>
+                    <td className="text-secondary small font-monospace">{cust.phone || '-'}</td>
+                    <td>
+                      <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-20 rounded-pill px-2.5 py-1">
+                        {cust.activeLoansCount} Loan{cust.activeLoansCount !== 1 ? 's' : ''}
+                      </span>
+                    </td>
+                    <td>
+                      {cust.overdueAmt > 0 ? (
+                        <span className="fw-bold text-danger">₹{cust.overdueAmt.toLocaleString('en-IN')}</span>
+                      ) : (
+                        <span className="text-muted small">₹0</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="fw-semibold text-warning">₹{cust.upcomingAmt.toLocaleString('en-IN')}</span>
+                    </td>
+                    <td className="text-end">
+                      <span className="fw-bold text-primary font-monospace" style={{ fontSize: '1.05rem' }}>
+                        ₹{cust.totalPending.toLocaleString('en-IN')}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <div className="d-flex align-items-center justify-content-center gap-1.5">
+                        <button
+                          className="btn btn-success btn-sm rounded-pill px-2.5 py-1 fw-bold d-flex align-items-center gap-1 shadow-2xs"
+                          style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}
+                          title="WhatsApp Reminder Bhejo"
+                          onClick={() => handleSendReminder(cust.name, cust.totalPending, cust.phone, formatIndianDate(cust.earliestDueDate), cust.firstLoanName)}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.534 5.856L.054 23.447a.5.5 0 0 0 .492.553.5.5 0 0 0 .151-.024l5.805-1.938A11.938 11.938 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.97 0-3.81-.572-5.362-1.558l-.383-.24-3.985 1.33 1.222-3.874-.265-.399A9.937 9.937 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                          </svg>
+                          WhatsApp
+                        </button>
+
+                        <button
+                          className="btn btn-outline-primary btn-sm rounded-pill px-2.5 py-1 fw-bold"
+                          title="View EMI Ledger"
+                          onClick={() => navigate('/emi-payments', { state: { customerFilter: cust.id } })}
+                        >
+                          Details
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Main Charts & Analytics Row */}
