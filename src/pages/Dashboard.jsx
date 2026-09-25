@@ -9,6 +9,7 @@ import { loanStore } from '../utils/loanStore';
 import { bankStore } from '../utils/bankStore';
 import { getLocalDateString, formatIndianDate } from '../utils/dateUtils';
 import AnimatedNumber from '../components/AnimatedNumber';
+import UserProfileCard from '../components/auth/UserProfileCard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -199,6 +200,9 @@ const Dashboard = () => {
   return (
     <div className="container-fluid py-4 px-3 px-md-4 bg-light page-transition" style={{ minHeight: '100vh' }}>
       
+      {/* Authenticated User Status & Profile Banner */}
+      <UserProfileCard />
+
       {/* Quick Action Header Bar */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>

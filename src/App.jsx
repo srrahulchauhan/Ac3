@@ -12,8 +12,13 @@ import Reports from './pages/Reports';
 import CalendarView from './pages/CalendarView';
 import Settings from './pages/Settings';
 import UdhaarAccount from './pages/UdhaarAccount';
-import StudyTracker from './pages/StudyTracker';
+
+// Authentication Pages
 import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import PhoneLogin from './pages/PhoneLogin';
 
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -23,13 +28,38 @@ function App() {
 
   return (
     <Routes>
-      {/* Auth Passcode Route */}
-      <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/" replace />} />
+      {/* Public Authentication Routes */}
+      <Route
+        path="/login"
+        element={!currentUser ? <Login /> : <Navigate to="/dashboard" replace />}
+      />
+      <Route
+        path="/register"
+        element={!currentUser ? <Register /> : <Navigate to="/dashboard" replace />}
+      />
+      <Route
+        path="/forgot-password"
+        element={!currentUser ? <ForgotPassword /> : <Navigate to="/dashboard" replace />}
+      />
+      <Route
+        path="/reset-password"
+        element={<ResetPassword />}
+      />
+      <Route
+        path="/phone-login"
+        element={!currentUser ? <PhoneLogin /> : <Navigate to="/dashboard" replace />}
+      />
 
-      {/* Protected Main Application Routes */}
-      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<StudyTracker />} />
-        <Route path="study" element={<StudyTracker />} />
+      {/* Protected Application Routes */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="bank-accounts" element={<BankAccounts />} />
         <Route path="daily-expenses" element={<DailyExpenses />} />
@@ -42,13 +72,11 @@ function App() {
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Fallback route */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );
 }
 
 export default App;
-
-
-

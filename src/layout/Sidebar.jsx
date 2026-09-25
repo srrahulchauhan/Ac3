@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { 
     MdDashboard, MdPeople, MdPayment, 
     MdEvent, MdReceiptLong, MdBarChart, MdSettings, MdLogout,
-    MdCompareArrows, MdAccountBalance, MdSchool
+    MdCompareArrows, MdAccountBalance
 } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
 import { loanStore } from '../utils/loanStore';
@@ -28,7 +28,6 @@ const Sidebar = ({ closeMobileSidebar }) => {
   };
 
   const menuItems = [
-    { name: '📚 Study Tracker', path: '/', icon: <MdSchool size={22} /> },
     { name: 'Dashboard', path: '/dashboard', icon: <MdDashboard size={22} /> },
     { name: 'Bank Accounts', path: '/bank-accounts', icon: <MdAccountBalance size={22} /> },
     { name: 'Udhaar', path: '/udhaar', icon: <MdCompareArrows size={22} /> },

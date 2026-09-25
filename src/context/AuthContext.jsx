@@ -1,148 +1,230 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { auth } from '../lib/firebase';
+import { 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInWithPhoneNumber, 
+  RecaptchaVerifier, 
+  sendPasswordResetEmail, 
+  updatePassword as firebaseUpdatePassword, 
+  updateProfile as firebaseUpdateProfile, 
+  signOut 
+} from 'firebase/auth';
 
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [userData, setUserData] = useState(null);
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
+  const [confirmationResult, setConfirmationResult] = useState(null);
 
   useEffect(() => {
-    // Require passcode verification on app open / session start
-    const isSessionAuth = sessionStorage.getItem('account_session_authenticated');
-    const storedUser = sessionStorage.getItem('account_mock_user') || localStorage.getItem('account_mock_user');
-    
-    if (isSessionAuth === 'true' && storedUser) {
-      const parsed = JSON.parse(storedUser);
-      setCurrentUser({ uid: parsed.uid, email: parsed.email });
-      setUserData(parsed);
-    } else {
-      localStorage.removeItem('account_mock_user');
-      sessionStorage.removeItem('account_mock_user');
-      sessionStorage.removeItem('account_session_authenticated');
-      setCurrentUser(null);
-      setUserData(null);
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setSession(user ? { user } : null);
+      if (user) {
+        setProfile({
+          id: user.uid,
+          full_name: user.displayName || 'User',
+          email: user.email || '',
+          phone: user.phoneNumber || '',
+          avatar_url: user.photoURL || '',
+        });
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const persistUser = (user) => {
-    sessionStorage.setItem('account_session_authenticated', 'true');
-    sessionStorage.setItem('account_mock_user', JSON.stringify(user));
-    localStorage.setItem('account_mock_user', JSON.stringify(user));
-    setCurrentUser({ uid: user.uid, email: user.email });
-    setUserData(user);
-  };
-
-  const register = async (email, password, firstName, lastName, phone) => {
-    const user = {
-      uid: Date.now().toString(),
-      firstName,
-      lastName,
-      email,
-      phone,
-      role: 'user',
-      customCategories: [],
-      customPaymentApps: [],
-      appLogo: '',
-      dismissedNotifications: [],
-      lastAutoSave: null,
-      createdAt: new Date().toISOString()
-    };
-    persistUser(user);
-    return { user: { uid: user.uid } };
-  };
-
-  const verifyPasscode = async (passcode) => {
-    if (passcode === '20002') {
-      const user = {
-        uid: 'r_accountant_owner',
-        firstName: 'Account',
-        lastName: 'Admin',
-        email: 'admin@raccountant.com',
-        phone: '',
-        role: 'Owner / Admin',
-        passcodeAuth: true,
-        createdAt: new Date().toISOString()
-      };
-      persistUser(user);
-      return true;
+  const register = async (email, password, fullName) => {
+    setAuthError(null);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await firebaseUpdateProfile(userCredential.user, { displayName: fullName });
+      return { user: userCredential.user };
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
     }
-    return false;
   };
 
   const login = async (email, password) => {
-    return verifyPasscode('20002');
+    setAuthError(null);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return { user: userCredential.user };
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
   };
-
 
   const loginWithGoogle = async () => {
-    const user = {
-      uid: Date.now().toString(),
-      firstName: "Google",
-      lastName: "User",
-      email: "google@example.com",
-      phone: "",
-      profilePic: "",
-      customCategories: [],
-      customPaymentApps: [],
-      appLogo: '',
-      dismissedNotifications: [],
-      lastAutoSave: null,
-      role: 'user',
-      createdAt: new Date().toISOString()
-    };
-    persistUser(user);
+    setAuthError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      return { user: userCredential.user };
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
   };
 
-  const logout = async () => {
-    sessionStorage.removeItem('account_session_authenticated');
-    sessionStorage.removeItem('account_mock_user');
-    localStorage.removeItem('account_mock_user');
-    setCurrentUser(null);
-    setUserData(null);
+  const setupRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible'
+      });
+    }
+  };
+
+  const sendPhoneOtp = async (phone) => {
+    setAuthError(null);
+    try {
+      setupRecaptcha();
+      const appVerifier = window.recaptchaVerifier;
+      const result = await signInWithPhoneNumber(auth, phone, appVerifier);
+      setConfirmationResult(result);
+      return result;
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
+  };
+
+  const verifyPhoneOtp = async (phone, token) => {
+    setAuthError(null);
+    try {
+      if (!confirmationResult) throw new Error('No OTP request found. Please send OTP first.');
+      const result = await confirmationResult.confirm(token);
+      return { user: result.user };
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
   };
 
   const resetPassword = async (email) => {
-    // mock
-    return true;
+    setAuthError(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return { message: 'Password reset email sent' };
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
   };
 
   const updatePassword = async (newPassword) => {
-    // mock
-    return true;
+    setAuthError(null);
+    try {
+      if (currentUser) {
+        await firebaseUpdatePassword(currentUser, newPassword);
+      }
+      return { message: 'Password updated' };
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
   };
 
-  const updateUserData = async (data) => {
-    if (!userData) return;
-    const updated = { ...userData, ...data };
-    persistUser(updated);
+  const updateProfile = async (updates) => {
+    setAuthError(null);
+    try {
+      if (currentUser) {
+        await firebaseUpdateProfile(currentUser, {
+          displayName: updates.full_name || updates.displayName,
+          photoURL: updates.avatar_url || updates.photoURL
+        });
+        setProfile((prev) => ({ ...prev, ...updates }));
+      }
+      return { message: 'Profile updated' };
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    setAuthError(null);
+    try {
+      await signOut(auth);
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
+  };
+
+  const displayName = profile?.full_name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
+  const avatarUrl = profile?.avatar_url || currentUser?.photoURL || '';
+
+  const legacyUserData = {
+    uid: currentUser?.uid || 'guest',
+    firstName: displayName.split(' ')[0] || 'User',
+    lastName: displayName.split(' ').slice(1).join(' ') || '',
+    full_name: displayName,
+    email: profile?.email || currentUser?.email || '',
+    phone: profile?.phone || currentUser?.phoneNumber || '',
+    avatar_url: avatarUrl,
+    profilePic: avatarUrl,
+    role: 'Member',
   };
 
   const value = {
     currentUser,
-    userData,
-    verifyPasscode,
+    session,
+    profile,
+    loading,
+    authError,
+    setAuthError,
+    isConfigured: true,
     register,
     login,
-
     loginWithGoogle,
-    logout,
+    sendPhoneOtp,
+    verifyPhoneOtp,
     resetPassword,
     updatePassword,
-    updateUserData,
-    customCategories: userData?.customCategories || [],
-    customPaymentApps: userData?.customPaymentApps || [],
-    appLogo: userData?.appLogo || '',
-    dismissedNotifications: userData?.dismissedNotifications || [],
-    lastAutoSave: userData?.lastAutoSave || null
+    updateProfile,
+    logout,
+    userData: legacyUserData,
+    verifyPasscode: async () => true,
+    updateUserData: updateProfile,
+    customCategories: [],
+    customPaymentApps: [],
+    appLogo: '',
+    dismissedNotifications: [],
+    lastAutoSave: null,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {!loading ? children : (
+        <div className="min-vh-100 d-flex flex-column align-items-center justify-content-center bg-light">
+          <div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status">
+            <span className="visually-hidden">Loading authentication...</span>
+          </div>
+          <p className="text-muted fw-semibold small">Initializing Firebase session...</p>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };
