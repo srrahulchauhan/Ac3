@@ -256,16 +256,7 @@ const Register = () => {
         </button>
       </form>
 
-      {/* Alternative Phone / SMS Option Link */}
-      <div className="text-center mt-3 pt-2">
-        <Link
-          to="/phone-login"
-          className="text-decoration-none small text-muted hover-underline"
-          style={{ fontSize: '0.86rem' }}
-        >
-          Prefer to sign in with <span className="text-primary fw-medium">Phone SMS OTP</span>?
-        </Link>
-      </div>
+
 
       {/* Login Navigation Link */}
       <div className="text-center mt-3 pt-3 border-top border-light-subtle">

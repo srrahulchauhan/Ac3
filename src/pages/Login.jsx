@@ -211,17 +211,7 @@ const Login = () => {
         </button>
       </form>
 
-      {/* Phone / SMS OTP Option Button */}
-      <div className="text-center mt-3 pt-2">
-        <Link
-          to="/phone-login"
-          className="btn btn-outline-secondary w-100 py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 small fw-medium border-secondary-subtle"
-          style={{ minHeight: '42px', fontSize: '0.88rem', color: '#475569' }}
-        >
-          <FiPhone size={16} />
-          <span>Sign in with Phone (SMS OTP)</span>
-        </Link>
-      </div>
+
 
       {/* Registration Navigation Link */}
       <div className="text-center mt-3 pt-3 border-top border-light-subtle">
