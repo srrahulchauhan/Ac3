@@ -18,8 +18,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import PhoneLogin from './pages/PhoneLogin';
-
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -44,10 +42,6 @@ function App() {
       <Route
         path="/reset-password"
         element={<ResetPassword />}
-      />
-      <Route
-        path="/phone-login"
-        element={!currentUser ? <PhoneLogin /> : <Navigate to="/dashboard" replace />}
       />
 
       {/* Protected Application Routes */}
